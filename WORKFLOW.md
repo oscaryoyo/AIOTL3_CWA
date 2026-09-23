@@ -179,27 +179,43 @@ graph TD
 AIOTL3_CWA/
 ├── .github/
 │   └── workflows/
-│       └── update_weather.yml    # (選用) GitHub Actions 定期自動排程爬取
-├── data/
-│   └── data.db                   # SQLite 資料庫 (由 .gitignore 忽略)
+│       └── fetch_weather.yml     # GitHub Actions 定期自動排程爬取
 ├── .env.example                  # 環境變數範例檔
 ├── .gitignore                    # Git 忽略清單
 ├── README.md                     # 專案介紹與課程導覽
 ├── WORKFLOW.md                   # 系統與開發工作流程手冊 (本檔案)
+├── vercel.json                   # Vercel 雲端部署設定檔
 ├── requirements.txt              # Python 相依套件清單
-├── fetch_data.py                 # ETL 爬蟲：API 請求、JSON 解析與資料入庫
-└── app.py                        # Streamlit 主程式：互動介面、圖表與 Folium 地圖
+├── cwa_service.py                # Stage 1: CWA API 資料抓取服務
+├── data_processor.py             # Stage 2: JSON 解析與 Pandas 資料清洗
+├── database.py                   # Stage 3: SQLite 資料庫與 SQL 驗證服務
+├── fetch_data.py                 # 主 ETL 流程控制腳本
+├── view_db.py                    # 資料庫內容檢視輔助工具
+└── app.py                        # Streamlit Web App 視覺化儀表板
+```
+
+---
+
+## 🚀 Vercel 雲端自動化部署工作流程 (Vercel CI/CD Deployment Workflow)
+
+```mermaid
+flowchart LR
+    A["Git Commit & Push<br/>to GitHub (main)"] --> B["Vercel Webhook 觸發"]
+    B --> C["自動讀取 vercel.json & requirements.txt"]
+    C --> D["構建 Python Serverless 執行環境"]
+    D --> E["發布線上互動預報儀表板 URL"]
 ```
 
 ---
 
 ## ⚙️ 常用工作流程命令速查 (Workflow Cheatsheet)
 
-| 工作階段 | 命令列指令 | 目的 |
+| 工作階段 | 命令列指令 / 動作 | 目的 |
 | :--- | :--- | :--- |
 | **環境初始化** | `python -m venv venv && .\venv\Scripts\activate` | 建立並啟動虛擬環境 |
 | **套件安裝** | `pip install -r requirements.txt` | 安裝專案所需第三方套件 |
 | **執行 ETL** | `python fetch_data.py` | 抓取氣象署最新數據並存入 SQLite |
+| **檢視 DB** | `python view_db.py` | 於 Console 檢視 SQLite 表格與資料 |
 | **啟動 Web** | `streamlit run app.py` | 開啟本機 Streamlit 視覺化服務 |
-| **提交代碼** | `git add . && git commit -m "feat: update dashboard"` | 本地 Git 提交 |
-| **推送代碼** | `git push origin main` | 同步至 GitHub 遠端儲存庫 |
+| **提交與推送** | `git add . && git commit -m "..." && git push origin main` | 同步至 GitHub 遠端儲存庫 |
+| **Vercel 部署** | 連結 GitHub `oscaryoyo/AIOTL3_CWA` 庫 | 於 Vercel 自動觸發雲端 CI/CD 部署 |

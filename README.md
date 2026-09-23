@@ -13,6 +13,7 @@
 ![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=flat&logo=sqlite&logoColor=white)
 ![Folium](https://img.shields.io/badge/Folium-Maps-77B800?style=flat&logo=leaflet&logoColor=white)
 ![Pandas](https://img.shields.io/badge/Pandas-Data-150458?style=flat&logo=pandas&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=flat&logo=vercel&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 
 ---
@@ -185,6 +186,24 @@ python fetch_data.py
 streamlit run app.py
 ```
 啟動成功後，瀏覽器將自動開啟 `http://localhost:8501`。
+
+---
+
+## 🌐 Vercel 雲端部署指南 (Vercel Deployment)
+
+本專案已包含 `vercel.json` 部署設定檔，支援一鍵將 GitHub 儲存庫部署至 Vercel 雲端平台：
+
+1. **登入 Vercel**：前往 [Vercel Dashboard](https://vercel.com/) 並以您的 GitHub 帳號登入。
+2. **匯入專案 (Import Project)**：
+   - 點擊 **"Add New..."** ➔ **"Project"**。
+   - 選擇您的 GitHub 儲存庫 `oscaryoyo/AIOTL3_CWA`。
+3. **設定環境變數 (Environment Variables)**：
+   - 在 **Environment Variables** 欄位新增：
+     - `Key`: `CWA_API_KEY`
+     - `Value`: `您的中央氣象署 API 金鑰` (如 `CWA-55FDA6D3-A43C-4AE0-BB30-E62D5F684FB2`)
+4. **發布部署 (Deploy)**：
+   - 點擊 **Deploy**，Vercel 將自動辨識 `vercel.json` 與 `requirements.txt` 並完成雲端部署。
+
 
 ---
 
