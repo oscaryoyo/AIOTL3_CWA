@@ -9,9 +9,9 @@
 > 「技術可以解決問題，但更重要的是用技術創造更好的未來！」—— 煥哥
 
 ![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=flat&logo=python&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-FF4B4B?style=flat&logo=streamlit&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.0+-000000?style=flat&logo=flask&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=flat&logo=sqlite&logoColor=white)
-![Folium](https://img.shields.io/badge/Folium-Maps-77B800?style=flat&logo=leaflet&logoColor=white)
+![Leaflet](https://img.shields.io/badge/Leaflet-Maps-199900?style=flat&logo=leaflet&logoColor=white)
 ![Pandas](https://img.shields.io/badge/Pandas-Data-150458?style=flat&logo=pandas&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=flat&logo=vercel&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
@@ -20,7 +20,7 @@
 
 ## 📌 專案簡介 (Project Overview)
 
-本專案為 **AI 創新微課程** 之實戰作品。透過串接**交通部中央氣象署（CWA）Open Data API**，取得台灣各區域最新氣象預測數據，經過 JSON 解析、Pandas 資料整理後儲存至 SQLite 本地資料庫。最後以 **Streamlit** 搭配 **Folium** 地圖庫，打造出具備互動式選單、溫差折線趨勢圖、數據報表與台灣各區動態氣溫地圖的完整 Web 視覺化儀表板。
+本專案為 **AI 創新微課程** 之實戰作品。透過串接**交通部中央氣象署（CWA）Open Data API**，取得台灣各區域最新氣象預測數據，經過 JSON 解析、Pandas 資料整理後儲存至 SQLite 本地資料庫。最後以 **Flask** 輕量級 Web 框架搭配 **Chart.js** 與 **Leaflet.js** 地圖庫，打造出具備互動式選單、溫差折線趨勢圖、數據報表與台灣各區動態氣溫地圖的完整 Web 視覺化儀表板，並支援直接部署至 **Vercel** 雲端平台。
 
 ---
 
@@ -33,8 +33,9 @@
 | **網路請求** | **Requests** | 發送 HTTP GET 請求並取得 JSON 格式氣象數據 |
 | **資料分析** | **Pandas** | JSON 攤平、DataFrame 資料清洗與型態轉換 |
 | **資料庫** | **SQLite3** | 輕量化關聯式資料庫，儲存分區與日期氣溫紀錄 |
-| **Web 框架** | **Streamlit** | 高效快速構建資料科學與視覺化互動 Web App |
-| **地圖視覺化** | **Folium / streamlit-folium** | 台灣分區地理圖層繪製與溫度階梯色彩可視化 |
+| **Web 框架** | **Flask (Python)** | 輕量 Web 框架，適合 Vercel Serverless Function 部署 |
+| **前端視覺化** | **Chart.js / Leaflet.js** | 繪製動態溫差折線圖與台灣分區色階地圖 |
+| **雲端部署** | **Vercel** | 結合 GitHub 倉庫進行全自動 CI/CD 發布 |
 | **版本控制** | **Git / GitHub** | 專案版本管控、開源與協同開發 |
 
 ---

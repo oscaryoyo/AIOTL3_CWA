@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌦️ Taiwan Weather Forecast 台灣天氣預報互動儀表板</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --primary: #38bdf8;
+            --primary-hover: #0284c7;
+            --accent-max: #ef4444;
+            --accent-min: #3b82f6;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --gold: #fbbf24;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans TC', 'Outfit', sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 25px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            font-weight: 900;
+            background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        header p.subtitle {
+            color: var(--text-sub);
+            font-size: 1rem;
+            margin-bottom: 12px;
+        }
+
+        .badge-bar {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .badge {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #e2e8f0;
+        }
+
+        .quote-box {
+            background: rgba(251, 191, 36, 0.1);
+            border-left: 4px solid var(--gold);
+            padding: 10px 18px;
+            border-radius: 8px;
+            display: inline-block;
+            color: #fef08a;
+            font-size: 0.95rem;
+            margin-top: 8px;
+        }
+
+        /* Controls */
+        .control-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 18px 24px;
+            border-radius: 16px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .select-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .select-group label {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1.05rem;
+        }
+
+        select {
+            background: #0f172a;
+            color: #f8fafc;
+            border: 1px solid var(--primary);
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        select:hover {
+            border-color: var(--primary-hover);
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+        }
+
+        .sync-btn {
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .sync-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+        }
+
+        /* Metrics Row */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+            margin-bottom: 25px;
+        }
+
+        .metric-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .metric-card h4 {
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+        }
+
+        .metric-value {
+            font-size: 2.2rem;
+            font-weight: 900;
+            margin-bottom: 4px;
+        }
+
+        .metric-value.max { color: var(--accent-max); }
+        .metric-value.min { color: var(--accent-min); }
+        .metric-value.diff { color: var(--gold); }
+
+        /* Dashboard Main Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        @media (max-width: 992px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 18px;
+            padding: 22px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 16px;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: center;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.8);
+            color: var(--primary);
+            font-weight: 700;
+            border-bottom: 2px solid var(--card-border);
+        }
+
+        td {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .temp-high { color: var(--accent-max); font-weight: 700; }
+        .temp-low { color: var(--accent-min); font-weight: 700; }
+
+        /* Leaflet Map */
+        #map {
+            height: 380px;
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+        }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            margin-top: 35px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>🌦️ Taiwan Weather Forecast 台灣天氣預報互動儀表板</h1>
+            <p class="subtitle">AI 創新微課程：從氣象資料到互動式天氣預報應用 (Flask × SQLite × Chart.js × Leaflet)</p>
+            <div class="badge-bar">
+                <span class="badge">CWA Open Data API</span>
+                <span class="badge">Flask Web App</span>
+                <span class="badge">SQLite Database</span>
+                <span class="badge">Chart.js Visualization</span>
+                <span class="badge">Vercel Deployed</span>
+            </div>
+            <div class="quote-box">
+                「技術可以解決問題，但更重要的是用技術創造更好的未來！」—— 煥哥
+            </div>
+        </header>
+
+        <!-- Controls -->
+        <div class="control-panel">
+            <div class="select-group">
+                <label for="regionSelect">📍 選擇分區地區：</label>
+                <select id="regionSelect" onchange="changeRegion(this.value)">
+                    {% for reg in regions %}
+                        <option value="{{ reg }}" {% if reg == selected_region %}selected{% endif %}>{{ reg }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button class="sync-btn" onclick="syncData()">🔄 重新同步 CWA 氣象資料</button>
+        </div>
+
+        <!-- Metrics Row -->
+        {% set first_rec = region_records[0] if region_records else None %}
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <h4>選擇地區</h4>
+                <div class="metric-value" style="color: var(--primary);">{{ selected_region }}</div>
+            </div>
+            <div class="metric-card">
+                <h4>最高氣溫 (MaxT)</h4>
+                <div class="metric-value max">{% if first_rec %}{{ first_rec.maxt }}°C{% else %}--{% endif %}</div>
+            </div>
+            <div class="metric-card">
+                <h4>最低氣溫 (MinT)</h4>
+                <div class="metric-value min">{% if first_rec %}{{ first_rec.mint }}°C{% else %}--{% endif %}</div>
+            </div>
+            <div class="metric-card">
+                <h4>預測溫差 Range</h4>
+                <div class="metric-value diff">
+                    {% if first_rec %}
+                        {{ (first_rec.maxt - first_rec.mint)|round(1) }}°C
+                    {% else %}--{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Layout -->
+        <div class="dashboard-grid">
+            <!-- Left: Chart & Table -->
+            <div style="display: flex; flex-direction: column; gap: 25px;">
+                <div class="card">
+                    <h3>📈 一週最高與最低氣溫走勢圖</h3>
+                    <canvas id="tempChart" height="220"></canvas>
+                </div>
+                
+                <div class="card">
+                    <h3>📋 {{ selected_region }} 預報資料明細</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>預報日期</th>
+                                <th>最低氣溫 (MinT)</th>
+                                <th>最高氣溫 (MaxT)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rec in region_records %}
+                            <tr>
+                                <td>{{ rec.dataDate }}</td>
+                                <td class="temp-low">{{ rec.mint }} °C</td>
+                                <td class="temp-high">{{ rec.maxt }} °C</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3">尚無資料，請點擊同步按鈕。</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Right: Taiwan Map -->
+            <div class="card">
+                <h3>🗺️ 台灣全區分區氣溫色階地圖</h3>
+                <div id="map"></div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Learn Today, Build Tomorrow | AI for Learning, AI for a Better Taiwan</p>
+            <p style="margin-top: 5px; font-size: 0.8rem; color: var(--text-sub);">Powered by Flask & Vercel Serverless Architecture</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        const regionRecords = {{ region_records|tojson }};
+        const allRecords = {{ all_records|tojson }};
+
+        // Switch Region Function
+        function changeRegion(regionName) {
+            window.location.href = "/?region=" + encodeURIComponent(regionName);
+        }
+
+        // Sync Data via REST API
+        async function syncData() {
+            const btn = document.querySelector('.sync-btn');
+            btn.innerText = "⏳ 同步中...";
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/sync');
+                const data = await res.json();
+                if(data.status === "success") {
+                    alert("✅ 氣象資料同步成功！重新載入頁面...");
+                    window.location.reload();
+                } else {
+                    alert("❌ 同步失敗: " + data.message);
+                }
+            } catch(e) {
+                alert("❌ 同步發送錯誤: " + e);
+            } finally {
+                btn.innerText = "🔄 重新同步 CWA 氣象資料";
+                btn.disabled = false;
+            }
+        }
+
+        // 1. Render Chart.js
+        if(regionRecords && regionRecords.length > 0) {
+            const labels = regionRecords.map(r => r.dataDate);
+            const minTemps = regionRecords.map(r => r.mint);
+            const maxTemps = regionRecords.map(r => r.maxt);
+
+            const ctx = document.getElementById('tempChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '最高氣溫 (MaxT °C)',
+                            data: maxTemps,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: '最低氣溫 (MinT °C)',
+                            data: minTemps,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#f8fafc', font: { family: 'Noto Sans TC' } }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+        }
+
+        // 2. Render Leaflet Taiwan Map
+        const regionCoords = {
+            "北部地區": [25.03, 121.56],
+            "中部地區": [24.14, 120.67],
+            "南部地區": [22.62, 120.31],
+            "東北部地區": [24.75, 121.75],
+            "東部地區": [23.97, 121.60],
+            "東南部地區": [22.75, 121.15],
+            "離島地區": [23.57, 119.57]
+        };
+
+        const map = L.map('map').setView([23.8, 121.0], 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Group latest temperature by region
+        const latestByRegion = {};
+        allRecords.forEach(r => {
+            if(!latestByRegion[r.regionName]) {
+                latestByRegion[r.regionName] = r;
+            }
+        });
+
+        Object.keys(regionCoords).forEach(reg => {
+            const coords = regionCoords[reg];
+            const data = latestByRegion[reg];
+            let color = '#3b82f6'; // default blue
+            let tempText = '無資料';
+
+            if(data) {
+                const avgTemp = (data.mint + data.maxt) / 2;
+                if(avgTemp > 30) color = '#ef4444';
+                else if(avgTemp >= 25) color = '#f97316';
+                else if(avgTemp >= 20) color = '#22c55e';
+                tempText = `Min: ${data.mint}°C / Max: ${data.maxt}°C`;
+            }
+
+            const marker = L.circleMarker(coords, {
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.8,
+                radius: 12
+            }).addTo(map);
+
+            marker.bindPopup(`<b>${reg}</b><br>${tempText}<br><a href="/?region=${encodeURIComponent(reg)}" style="color:#0284c7;">查看區域儀表板</a>`);
+        });
+    </script>
+</body>
+</html>
