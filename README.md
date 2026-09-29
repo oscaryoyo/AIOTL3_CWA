@@ -18,6 +18,16 @@
 
 ---
 
+## 🔗 Quick Links
+
+| 類型 | 連結 |
+| :--- | :--- |
+| 📦 **GitHub Repository** | [https://github.com/oscaryoyo/AIOTL3_CWA](https://github.com/oscaryoyo/AIOTL3_CWA) |
+| 💻 **本機開發網址** | [http://127.0.0.1:5000](http://127.0.0.1:5000)（需先執行 `python app.py`）|
+| 🌐 **Vercel 雲端部署** | *(尚未部署，執行 `vercel --prod` 可取得線上網址)* |
+
+---
+
 ## 📌 專案簡介 (Project Overview)
 
 本專案為 **AI 創新微課程** 之實戰作品。透過串接**交通部中央氣象署（CWA）Open Data API**，取得台灣各區域最新氣象預測數據，經過 JSON 解析、Pandas 資料整理後儲存至 SQLite 本地資料庫。最後以 **Flask** 輕量級 Web 框架搭配 **Chart.js** 與 **Leaflet.js** 地圖庫，打造出具備互動式選單、溫差折線趨勢圖、數據報表與台灣各區動態氣溫地圖的完整 Web 視覺化儀表板，並支援直接部署至 **Vercel** 雲端平台。
