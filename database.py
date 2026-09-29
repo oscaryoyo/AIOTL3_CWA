@@ -25,20 +25,29 @@ def get_connection(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
 def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
     """
     Initialize SQLite database and create TemperatureForecasts table (Unit 08, 09).
-    Enforces UNIQUE(regionName, dataDate) to prevent duplicate records.
-    """
-    create_table_sql = """
-    CREATE TABLE IF NOT EXISTS TemperatureForecasts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        regionName TEXT NOT NULL,
-        dataDate TEXT NOT NULL,
-        mint REAL,
-        maxt REAL,
-        UNIQUE(regionName, dataDate)
-    );
+    Enforces UNIQUE(locationName, dataDate) to store each city/county forecast accurately.
     """
     with get_connection(db_path) as conn:
         cursor = conn.cursor()
+        # Check if table exists and inspect columns
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='TemperatureForecasts';")
+        if cursor.fetchone():
+            cursor.execute("PRAGMA table_info(TemperatureForecasts);")
+            cols = [c[1] for c in cursor.fetchall()]
+            if "locationName" not in cols:
+                cursor.execute("DROP TABLE TemperatureForecasts;")
+
+        create_table_sql = """
+        CREATE TABLE IF NOT EXISTS TemperatureForecasts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            regionName TEXT NOT NULL,
+            locationName TEXT NOT NULL,
+            dataDate TEXT NOT NULL,
+            mint REAL,
+            maxt REAL,
+            UNIQUE(locationName, dataDate)
+        );
+        """
         cursor.execute(create_table_sql)
         conn.commit()
     logging.info(f"Database initialized at: {db_path}")
@@ -46,11 +55,11 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
 
 def save_forecast_to_db(df: pd.DataFrame, db_path: str = DEFAULT_DB_PATH) -> int:
     """
-    Save or update regional weather forecast records into TemperatureForecasts (Unit 08, 20).
-    Uses INSERT OR REPLACE to ensure idempotency (prevent duplicates on re-execution).
+    Save or update city-level weather forecast records into TemperatureForecasts.
+    Uses INSERT OR REPLACE to ensure idempotency.
 
     Args:
-        df (pd.DataFrame): DataFrame containing [regionName, dataDate, mint, maxt].
+        df (pd.DataFrame): DataFrame containing [regionName, locationName, dataDate, mint, maxt].
         db_path (str): Database file path.
 
     Returns:
@@ -63,12 +72,12 @@ def save_forecast_to_db(df: pd.DataFrame, db_path: str = DEFAULT_DB_PATH) -> int
     init_db(db_path)
 
     upsert_sql = """
-    INSERT OR REPLACE INTO TemperatureForecasts (regionName, dataDate, mint, maxt)
-    VALUES (?, ?, ?, ?);
+    INSERT OR REPLACE INTO TemperatureForecasts (regionName, locationName, dataDate, mint, maxt)
+    VALUES (?, ?, ?, ?, ?);
     """
 
     records = [
-        (row["regionName"], str(row["dataDate"]), float(row["mint"]), float(row["maxt"]))
+        (row["regionName"], row["locationName"], str(row["dataDate"]), float(row["mint"]), float(row["maxt"]))
         for _, row in df.iterrows()
     ]
 
@@ -76,14 +85,14 @@ def save_forecast_to_db(df: pd.DataFrame, db_path: str = DEFAULT_DB_PATH) -> int
         cursor = conn.cursor()
         cursor.executemany(upsert_sql, records)
         conn.commit()
-        inserted_count = cursor.rowcount
 
-    logging.info(f"Successfully upserted {len(records)} records into TemperatureForecasts.")
+    logging.info(f"Successfully upserted {len(records)} city forecast records into TemperatureForecasts.")
     return len(records)
 
 
 def query_distinct_regions(db_path: str = DEFAULT_DB_PATH) -> List[str]:
-    """Query list of distinct region names from TemperatureForecasts (Unit 10)."""
+    """Query list of distinct region names from TemperatureForecasts."""
+    init_db(db_path)
     sql = "SELECT DISTINCT regionName FROM TemperatureForecasts ORDER BY regionName;"
     with get_connection(db_path) as conn:
         cursor = conn.cursor()
@@ -92,13 +101,39 @@ def query_distinct_regions(db_path: str = DEFAULT_DB_PATH) -> List[str]:
     return [r[0] for r in rows]
 
 
-def query_forecast_by_region(region_name: str, db_path: str = DEFAULT_DB_PATH) -> pd.DataFrame:
-    """Query weather forecast for a specific region (Unit 10)."""
+def query_distinct_cities(db_path: str = DEFAULT_DB_PATH) -> List[str]:
+    """Query list of distinct county/city names from TemperatureForecasts."""
+    init_db(db_path)
+    sql = "SELECT DISTINCT locationName FROM TemperatureForecasts ORDER BY locationName;"
+    with get_connection(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+    return [r[0] for r in rows]
+
+
+def query_forecast_by_city(city_name: str, db_path: str = DEFAULT_DB_PATH) -> pd.DataFrame:
+    """Query weather forecast for a specific city/county."""
+    init_db(db_path)
     sql = """
-    SELECT id, regionName, dataDate, mint, maxt 
+    SELECT id, regionName, locationName, dataDate, mint, maxt 
+    FROM TemperatureForecasts 
+    WHERE locationName = ? 
+    ORDER BY dataDate ASC;
+    """
+    with get_connection(db_path) as conn:
+        df = pd.read_sql_query(sql, conn, params=(city_name,))
+    return df
+
+
+def query_forecast_by_region(region_name: str, db_path: str = DEFAULT_DB_PATH) -> pd.DataFrame:
+    """Query weather forecast for a specific region."""
+    init_db(db_path)
+    sql = """
+    SELECT id, regionName, locationName, dataDate, mint, maxt 
     FROM TemperatureForecasts 
     WHERE regionName = ? 
-    ORDER BY dataDate ASC;
+    ORDER BY locationName, dataDate ASC;
     """
     with get_connection(db_path) as conn:
         df = pd.read_sql_query(sql, conn, params=(region_name,))
@@ -106,8 +141,9 @@ def query_forecast_by_region(region_name: str, db_path: str = DEFAULT_DB_PATH) -
 
 
 def query_all_forecasts(db_path: str = DEFAULT_DB_PATH) -> pd.DataFrame:
-    """Query all forecast records from TemperatureForecasts (Unit 10, 12)."""
-    sql = "SELECT id, regionName, dataDate, mint, maxt FROM TemperatureForecasts ORDER BY regionName, dataDate ASC;"
+    """Query all forecast records from TemperatureForecasts."""
+    init_db(db_path)
+    sql = "SELECT id, regionName, locationName, dataDate, mint, maxt FROM TemperatureForecasts ORDER BY regionName, locationName, dataDate ASC;"
     with get_connection(db_path) as conn:
         df = pd.read_sql_query(sql, conn)
     return df

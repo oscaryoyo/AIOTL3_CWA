@@ -8,7 +8,14 @@ import sqlite3
 import pandas as pd
 from flask import Flask, render_template, jsonify, request
 from fetch_data import run_etl_pipeline
-from database import query_all_forecasts, query_distinct_regions, query_forecast_by_region, DEFAULT_DB_PATH
+from database import (
+    query_all_forecasts,
+    query_distinct_regions,
+    query_distinct_cities,
+    query_forecast_by_region,
+    query_forecast_by_city,
+    DEFAULT_DB_PATH
+)
 
 app = Flask(__name__)
 
@@ -30,25 +37,35 @@ def ensure_db_ready():
 
 @app.route("/")
 def index():
-    """Render main Taiwan Weather Forecast Dashboard page."""
+    """Render main Taiwan Weather Forecast Dashboard page with all cities and regions."""
     ensure_db_ready()
     regions = query_distinct_regions()
-    if not regions:
-        regions = ["北部地區", "中部地區", "南部地區", "東北部地區", "東部地區", "東南部地區", "離島地區"]
+    cities = query_distinct_cities()
     
-    selected_region = request.args.get("region", regions[0] if regions else "北部地區")
-    region_data = query_forecast_by_region(selected_region)
+    selected_city = request.args.get("city")
+    selected_region = request.args.get("region")
+
+    if selected_city and selected_city in cities:
+        active_location = selected_city
+        active_data = query_forecast_by_city(selected_city)
+    elif selected_region and selected_region in regions:
+        active_location = selected_region
+        active_data = query_forecast_by_region(selected_region)
+    else:
+        active_location = "臺北市" if "臺北市" in cities else (cities[0] if cities else "北部地區")
+        active_data = query_forecast_by_city(active_location) if active_location in cities else query_forecast_by_region(active_location)
+    
     all_data = query_all_forecasts()
 
-    # Convert DataFrames to dict lists for JSON / Jinja template
-    region_records = region_data.to_dict(orient="records") if not region_data.empty else []
+    location_records = active_data.to_dict(orient="records") if not active_data.empty else []
     all_records = all_data.to_dict(orient="records") if not all_data.empty else []
 
     return render_template(
         "index.html",
         regions=regions,
-        selected_region=selected_region,
-        region_records=region_records,
+        cities=cities,
+        selected_location=active_location,
+        location_records=location_records,
         all_records=all_records
     )
 
@@ -57,8 +74,11 @@ def index():
 def api_weather():
     """REST API endpoint for weather forecast data."""
     ensure_db_ready()
+    city = request.args.get("city")
     region = request.args.get("region")
-    if region:
+    if city:
+        df = query_forecast_by_city(city)
+    elif region:
         df = query_forecast_by_region(region)
     else:
         df = query_all_forecasts()

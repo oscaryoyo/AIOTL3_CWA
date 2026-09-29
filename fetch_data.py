@@ -22,14 +22,13 @@ def run_etl_pipeline() -> int:
     # 1. Fetch raw API data
     raw_json = fetch_weather_forecast()
     
-    # 2. Parse & clean
+    # 2. Parse & clean county/city-level forecast data
     detailed_df = parse_weather_json(raw_json)
-    regional_df = get_regional_forecast_df(detailed_df)
     
-    # 3. Save / Upsert to SQLite
-    saved_count = save_forecast_to_db(regional_df)
+    # 3. Save / Upsert city-level records to SQLite
+    saved_count = save_forecast_to_db(detailed_df)
     
-    logging.info(f"ETL Pipeline completed successfully! Total {saved_count} regional forecast records processed.")
+    logging.info(f"ETL Pipeline completed successfully! Total {saved_count} city forecast records processed.")
     return saved_count
 
 
