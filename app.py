@@ -1,6 +1,7 @@
 """
 Flask Web Application for Taiwan Weather Forecast (Vercel Deployment)
-Integrates with CWA Open Data API, SQLite Database (data.db), and renders interactive weather dashboard.
+Integrates with CWA Open Data API, SQLite Database, and renders interactive weather dashboard.
+Vercel compatible: uses /tmp for writable SQLite storage.
 """
 
 import os
@@ -8,6 +9,16 @@ import sqlite3
 import pandas as pd
 from flask import Flask, render_template, jsonify, request
 from fetch_data import run_etl_pipeline
+
+# ── Vercel Compatibility: use /tmp (writable) instead of project root ──────────
+# On Vercel, the project directory is read-only; /tmp is the only writable space.
+_IS_VERCEL = os.environ.get("VERCEL") == "1" or os.environ.get("VERCEL_ENV") is not None
+if _IS_VERCEL:
+    _DB_PATH = "/tmp/data.db"
+    os.environ.setdefault("DB_PATH", _DB_PATH)
+else:
+    _DB_PATH = None  # use default from database.py
+
 from database import (
     query_all_forecasts,
     query_distinct_regions,
@@ -16,6 +27,11 @@ from database import (
     query_forecast_by_city,
     DEFAULT_DB_PATH
 )
+
+# Override DB path for Vercel
+if _DB_PATH:
+    import database as _db_module
+    _db_module.DEFAULT_DB_PATH = _DB_PATH
 
 app = Flask(__name__)
 
