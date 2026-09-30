@@ -32,8 +32,9 @@ ENV/
 .env
 *.env
 
-# SQLite database
+# SQLite database (bundle data.db for serverless Vercel deployment)
 *.db
+!data.db
 *.sqlite3
 
 # Streamlit

@@ -30,6 +30,8 @@ from database import (
     query_forecast_by_region,
     query_forecast_by_city,
 )
+import traceback
+import logging
 
 app = Flask(__name__)
 
@@ -47,6 +49,12 @@ def ensure_db_ready():
             run_etl_pipeline()
         except Exception as err:
             print(f"[Flask] ETL execution failed: {err}")
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logging.error(f"Unhandled Exception: {traceback.format_exc()}")
+    return f"<h3>Application Error</h3><pre>{traceback.format_exc()}</pre>", 500
 
 
 @app.route("/")
