@@ -618,6 +618,37 @@
         .typhoon-forecast-label {
             background: rgba(245, 158, 11, 0.88) !important;
         }
+
+        /* Temperature Pill Badge (matches reference image) */
+        .temp-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(145deg, #f59e0b, #f97316);
+            border: 2px solid rgba(255, 255, 255, 0.75);
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 900;
+            font-family: 'Outfit', sans-serif;
+            padding: 3px 11px;
+            border-radius: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.3);
+            white-space: nowrap;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+            cursor: pointer;
+            transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s;
+            line-height: 1.2;
+        }
+        .temp-pill:hover {
+            transform: scale(1.18);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+        }
+        /* cooler temps get blue-green pill */
+        .temp-pill.cool  { background: linear-gradient(145deg, #0ea5e9, #06b6d4); }
+        .temp-pill.mild  { background: linear-gradient(145deg, #84cc16, #22c55e); }
+        .temp-pill.warm  { background: linear-gradient(145deg, #eab308, #f59e0b); }
+        .temp-pill.hot   { background: linear-gradient(145deg, #f97316, #ef4444); }
+        .temp-pill.vhot  { background: linear-gradient(145deg, #ef4444, #dc2626); }
     </style>
 </head>
 <body>
@@ -879,11 +910,11 @@
             map.flyTo([23.85, 120.95], 7.8, { duration: 1.0 });
         }
 
-        // ── 2. Layer Groups ─────────────────────────────────────
+        // ── 2. Layer Groups (order = bottom to top) ─────────────
+        const choroplethGroup = L.layerGroup().addTo(map); // temp fill BELOW markers
         const markerGroup = L.layerGroup().addTo(map);
         const typhoonLayerGroup = L.layerGroup().addTo(map);
         const stationLayerGroup = L.layerGroup().addTo(map);
-        const tempFillGroup = L.layerGroup().addTo(map);  // temperature choropleth fill
         const markersByCity = {};
 
         // Find Latest Record per City
@@ -894,64 +925,123 @@
             }
         });
 
-        // ── Taiwan City Approximate Polygons (simplified bounding circles for choropleth) ──
-        // Each entry: [centerLat, centerLng, approxRadiusKm]
-        const cityApproxRadius = {
-            "基隆市": 8,
-            "臺北市": 13,
-            "新北市": 22,
-            "桃園市": 20,
-            "新竹市": 8,
-            "新竹縣": 18,
-            "宜蘭縣": 22,
-            "苗栗縣": 22,
-            "臺中市": 30,
-            "彰化縣": 16,
-            "南投縣": 35,
-            "雲林縣": 18,
-            "嘉義市": 8,
-            "嘉義縣": 22,
-            "臺南市": 28,
-            "高雄市": 32,
-            "屏東縣": 30,
-            "花蓮縣": 38,
-            "臺東縣": 35,
-            "澎湖縣": 12,
-            "金門縣": 10,
-            "連江縣": 8
+        // GeoJSON source for Taiwan administrative boundaries (Chinese county names: COUNTYNAME)
+        const TW_GEO_URLS = [
+            'https://raw.githubusercontent.com/ronnywang/twgeojson/master/twCounty2010.geo.json',
+            'https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json'
+        ];
+        // English → Chinese name fallback mapping (for GeoJSON sources with English names)
+        const GEO_EN_TO_ZH = {
+            'Taipei City':'臺北市','New Taipei City':'新北市','Taoyuan City':'桃園市',
+            'Taichung City':'臺中市','Tainan City':'臺南市','Kaohsiung City':'高雄市',
+            'Keelung City':'基隆市','Hsinchu City':'新竹市','Chiayi City':'嘉義市',
+            'Hsinchu County':'新竹縣','Miaoli County':'苗栗縣','Changhua County':'彰化縣',
+            'Nantou County':'南投縣','Yunlin County':'雲林縣','Chiayi County':'嘉義縣',
+            'Pingtung County':'屏東縣','Yilan County':'宜蘭縣','Hualien County':'花蓮縣',
+            'Taitung County':'臺東縣','Penghu County':'澎湖縣','Kinmen County':'金門縣',
+            'Lienchiang County':'連江縣'
         };
+        let _cachedGeoJSON = null;
 
+        async function loadTaiwanGeoJSON() {
+            if (_cachedGeoJSON) return _cachedGeoJSON;
+            for (const url of TW_GEO_URLS) {
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) continue;
+                    _cachedGeoJSON = await res.json();
+                    return _cachedGeoJSON;
+                } catch(e) { /* try next URL */ }
+            }
+            return null;
+        }
+
+        function resolveCountyName(props) {
+            return props.COUNTYNAME || props.COUNTY_NAM || props.countyname ||
+                   GEO_EN_TO_ZH[props.name] || GEO_EN_TO_ZH[props.NAME] || '';
+        }
+
+        // Temperature color scale – warm sandy/orange palette matching reference image
         function getTempColor(temp) {
-            if (temp >= 36) return '#dc2626';
-            if (temp >= 33) return '#ef4444';
+            if (temp >= 36) return '#b91c1c';
+            if (temp >= 34) return '#dc2626';
+            if (temp >= 32) return '#ef4444';
             if (temp >= 30) return '#f97316';
-            if (temp >= 27) return '#eab308';
-            if (temp >= 24) return '#22c55e';
-            if (temp >= 21) return '#06b6d4';
+            if (temp >= 28) return '#f59e0b';
+            if (temp >= 26) return '#d4a017'; // warm golden-tan
+            if (temp >= 24) return '#84cc16';
+            if (temp >= 22) return '#22c55e';
+            if (temp >= 20) return '#06b6d4';
             if (temp >= 18) return '#3b82f6';
             return '#2c7bb6';
         }
 
-        function renderTempFill() {
-            tempFillGroup.clearLayers();
+        // Choropleth fill color — slightly desaturated/sandy to match reference image style
+        function getChoroplethFill(temp) {
+            // Using a warm sandy palette interpolation
+            if (temp >= 36) return ['#7f1d1d', 0.72];
+            if (temp >= 34) return ['#991b1b', 0.72];
+            if (temp >= 32) return ['#c2410c', 0.65];
+            if (temp >= 30) return ['#d97706', 0.60];
+            if (temp >= 28) return ['#b45309', 0.55]; // sandy orange – matches image
+            if (temp >= 26) return ['#a16207', 0.48]; // golden tan
+            if (temp >= 24) return ['#65a30d', 0.50];
+            if (temp >= 22) return ['#15803d', 0.50];
+            if (temp >= 20) return ['#0e7490', 0.50];
+            if (temp >= 18) return ['#1d4ed8', 0.50];
+            return ['#1e3a8a', 0.55];
+        }
+
+        async function renderTempFill() {
+            choroplethGroup.clearLayers();
             if (currentMode !== 'temp') return;
-            Object.keys(cityCoords).forEach(cityName => {
-                const coords = cityCoords[cityName];
-                const data = latestByCity[cityName] || {};
-                const avgTemp = (data.mint !== undefined && data.maxt !== undefined)
-                    ? (Number(data.mint) + Number(data.maxt)) / 2
-                    : 25;
-                const color = getTempColor(avgTemp);
-                const radius = (cityApproxRadius[cityName] || 20) * 1000;
-                L.circle(coords, {
-                    radius: radius,
-                    color: color,
-                    fillColor: color,
-                    fillOpacity: 0.22,
-                    weight: 1.2,
-                    opacity: 0.45
-                }).addTo(tempFillGroup);
-            });
+
+            const geojson = await loadTaiwanGeoJSON();
+            if (geojson) {
+                // GeoJSON choropleth with actual county polygons
+                L.geoJSON(geojson, {
+                    style: function(feature) {
+                        const countyName = resolveCountyName(feature.properties);
+                        const data = latestByCity[countyName] || {};
+                        const avgTemp = (data.mint !== undefined && data.maxt !== undefined)
+                            ? (Number(data.mint) + Number(data.maxt)) / 2
+                            : 26;
+                        const [fillColor, fillOpacity] = getChoroplethFill(avgTemp);
+                        return {
+                            fillColor: fillColor,
+                            fillOpacity: fillOpacity,
+                            color: 'rgba(120, 140, 180, 0.55)',
+                            weight: 1.5,
+                            opacity: 0.85
+                        };
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.on('click', function() {
+                            const countyName = resolveCountyName(feature.properties);
+                            if (countyName && allCities.includes(countyName)) {
+                                selectCity(countyName);
+                                openChartWindow();
+                            }
+                        });
+                    }
+                }).addTo(choroplethGroup);
+            } else {
+                // Fallback: draw filled circles per city
+                Object.keys(cityCoords).forEach(cityName => {
+                    const coords = cityCoords[cityName];
+                    const data = latestByCity[cityName] || {};
+                    const avgTemp = (data.mint !== undefined && data.maxt !== undefined)
+                        ? (Number(data.mint) + Number(data.maxt)) / 2 : 26;
+                    const [fillColor, fillOpacity] = getChoroplethFill(avgTemp);
+                    L.circle(coords, {
+                        radius: 28000,
+                        color: 'rgba(120,140,180,0.5)',
+                        fillColor: fillColor,
+                        fillOpacity: fillOpacity,
+                        weight: 1.2
+                    }).addTo(choroplethGroup);
+                });
+            }
         }
 
         // ── 3. Typhoon Track Rendering ──────────────────────────
@@ -1146,10 +1236,17 @@
 
             switch (mode) {
                 case 'temp': {
-                    const color = getTempColor(avgTemp);
+                    const t = Math.round(avgTemp);
+                    let pillClass = 'warm';
+                    if (t >= 32) pillClass = 'vhot';
+                    else if (t >= 29) pillClass = 'hot';
+                    else if (t >= 26) pillClass = 'warm';
+                    else if (t >= 23) pillClass = 'mild';
+                    else pillClass = 'cool';
                     return {
-                        html: `<span class="marker-name" style="font-weight:800; font-size:0.78rem;">${shortName}</span><span class="marker-val" style="color:${color}; font-size:0.92rem; font-weight:900;">🌡️ ${Math.round(avgTemp)}°</span>`,
-                        color: color
+                        html: `<div class="temp-pill ${pillClass}">${t}°</div>`,
+                        color: getTempColor(avgTemp),
+                        isPill: true
                     };
                 }
                 case 'rain': {
@@ -1213,17 +1310,17 @@
                 const contentInfo = getMarkerContent(cityName, currentMode);
                 const data = latestByCity[cityName] || {};
 
-                const iconHtml = `
-                    <div class="weather-marker-bubble" style="border-color: ${contentInfo.color};">
-                        ${contentInfo.html}
-                    </div>
-                `;
+                const iconHtml = contentInfo.isPill
+                    ? contentInfo.html
+                    : `<div class="weather-marker-bubble" style="border-color: ${contentInfo.color};">${contentInfo.html}</div>`;
+                const iconW = contentInfo.isPill ? 52 : 95;
+                const iconH = contentInfo.isPill ? 30 : 28;
 
                 const customIcon = L.divIcon({
                     html: iconHtml,
                     className: '',
-                    iconSize: [95, 28],
-                    iconAnchor: [47, 14]
+                    iconSize: [iconW, iconH],
+                    iconAnchor: [iconW/2, iconH/2]
                 });
 
                 const marker = L.marker(coords, { icon: customIcon }).addTo(markerGroup);
@@ -1280,7 +1377,7 @@
 
             // Re-render markers and temp fill
             renderMarkers();
-            renderTempFill();
+            renderTempFill(); // async – fine as fire-and-forget
         }
 
         function updateLegend(mode) {
@@ -1539,10 +1636,10 @@
         }
 
         // Initial Setup
-        renderTempFill();
         renderMarkers();
         renderTyphoonTracks();
         renderStationDots();
+        renderTempFill(); // async GeoJSON choropleth – loads after page paint
         updateChartAndTable(currentSelectedLocation);
     </script>
 </body>
