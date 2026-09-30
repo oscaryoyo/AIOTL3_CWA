@@ -11,15 +11,19 @@ import shutil
 # Must set DB_PATH env var BEFORE importing database.py so get_db_path() resolves
 # to /tmp (the only writable directory on Vercel's read-only filesystem).
 _IS_VERCEL = os.environ.get("VERCEL") == "1" or os.environ.get("VERCEL_ENV") is not None
-if _IS_VERCEL and not os.environ.get("DB_PATH"):
-    db_tmp = "/tmp/data.db"
-    os.environ["DB_PATH"] = db_tmp
-    # Copy bundled data.db to /tmp if it doesn't exist yet in the container
-    if not os.path.exists(db_tmp):
-        original_db = os.path.join(os.path.dirname(__file__), "data.db")
-        if os.path.exists(original_db):
-            shutil.copy2(original_db, db_tmp)
+if _IS_VERCEL:
+    if not os.environ.get("DB_PATH"):
+        os.environ["DB_PATH"] = "/tmp/data.db"
+    for fname in ["data.db", "typhoon_cache.json", "stations_cache.json", "update_time.txt"]:
+        src = os.path.join(os.path.dirname(__file__), fname)
+        dst = os.path.join("/tmp", fname)
+        if os.path.exists(src) and not os.path.exists(dst):
+            try:
+                shutil.copy2(src, dst)
+            except Exception:
+                pass
 
+import json
 import pandas as pd
 from flask import Flask, render_template, jsonify, request
 from fetch_data import run_etl_pipeline
@@ -79,6 +83,36 @@ def clean_records(df):
     return df.to_dict(orient="records")
 
 
+def load_cached_json(filename, default=None):
+    """Load cached JSON data with fallback."""
+    if default is None:
+        default = []
+    for base in [os.path.dirname(__file__), "/tmp"]:
+        target = os.path.join(base, filename)
+        if os.path.exists(target):
+            try:
+                with open(target, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+    return default
+
+
+def get_update_timestamp():
+    """Retrieve last updated timestamp."""
+    for base in [os.path.dirname(__file__), "/tmp"]:
+        target = os.path.join(base, "update_time.txt")
+        if os.path.exists(target):
+            try:
+                with open(target, "r", encoding="utf-8") as f:
+                    val = f.read().strip()
+                    if val:
+                        return val
+            except Exception:
+                pass
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
 @app.route("/")
 def index():
     """Render main Taiwan Weather Forecast Dashboard page with all cities and regions."""
@@ -104,13 +138,20 @@ def index():
     location_records = clean_records(active_data)
     all_records = clean_records(all_data)
 
+    typhoons = load_cached_json("typhoon_cache.json")
+    stations = load_cached_json("stations_cache.json")
+    update_time = get_update_timestamp()
+
     return render_template(
         "index.html",
         regions=regions,
         cities=cities,
         selected_location=active_location,
         location_records=location_records,
-        all_records=all_records
+        all_records=all_records,
+        typhoons=typhoons,
+        stations=stations,
+        update_time=update_time
     )
 
 
@@ -129,12 +170,29 @@ def api_weather():
     return jsonify(clean_records(df))
 
 
+@app.route("/api/typhoon")
+def api_typhoon():
+    """REST API endpoint for typhoon track and forecast data."""
+    return jsonify(load_cached_json("typhoon_cache.json"))
+
+
+@app.route("/api/stations")
+def api_stations():
+    """REST API endpoint for observation station dots."""
+    return jsonify(load_cached_json("stations_cache.json"))
+
+
 @app.route("/api/sync", methods=["POST", "GET"])
 def api_sync():
     """API endpoint to trigger live CWA API ETL sync."""
     try:
         count = run_etl_pipeline()
-        return jsonify({"status": "success", "count": count, "message": "ETL sync completed successfully."})
+        return jsonify({
+            "status": "success",
+            "count": count,
+            "update_time": get_update_timestamp(),
+            "message": "ETL sync completed successfully."
+        })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

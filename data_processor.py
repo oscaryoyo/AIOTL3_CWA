@@ -230,6 +230,85 @@ def get_regional_forecast_df(df: pd.DataFrame) -> pd.DataFrame:
     return regional_df
 
 
+def parse_typhoon_data(json_data: Dict[str, Any]) -> list:
+    """Parse CWA tropical cyclone / typhoon forecast and past track data."""
+    if not json_data:
+        return []
+    cyclones = json_data.get("records", {}).get("TropicalCyclones", {}).get("TropicalCyclone", [])
+    results = []
+    for c in cyclones:
+        name = c.get("CwaTyphoonName") or c.get("TyphoonName") or (f"TD-{c.get('CwaTdNo', '')}")
+        analysis = c.get("AnalysisData", {}).get("Fix", [])
+        forecast = c.get("ForecastData", {}).get("Fix", [])
+        past_pts = []
+        for a in analysis:
+            try:
+                past_pts.append({
+                    "lat": float(a.get("CoordinateLatitude")),
+                    "lng": float(a.get("CoordinateLongitude")),
+                    "time": a.get("DateTime", ""),
+                    "wind": a.get("MaxWindSpeed", "--"),
+                    "pressure": a.get("Pressure", "--"),
+                    "speed": a.get("MovingSpeed", "--"),
+                    "dir": a.get("MovingDirection", "")
+                })
+            except Exception:
+                pass
+        fc_pts = []
+        for f in forecast:
+            try:
+                fc_pts.append({
+                    "lat": float(f.get("CoordinateLatitude")),
+                    "lng": float(f.get("CoordinateLongitude")),
+                    "hour": f.get("ForecastHour", ""),
+                    "wind": f.get("MaxWindSpeed", "--"),
+                    "radius": float(f.get("Radius70PercentProbability", 0))
+                })
+            except Exception:
+                pass
+        results.append({
+            "name": name,
+            "typhoonNo": c.get("TyphoonNo") or c.get("CwaTdNo", ""),
+            "past": past_pts,
+            "forecast": fc_pts
+        })
+    return results
+
+
+def parse_station_data(obs_data: Dict[str, Any]) -> list:
+    """Parse real-time weather stations and coordinates into a list of station points."""
+    if not obs_data:
+        return []
+    stations = obs_data.get("records", {}).get("Station", [])
+    st_list = []
+    for s in stations:
+        name = s.get("StationName")
+        county = s.get("GeoInfo", {}).get("CountyName", "")
+        coords = s.get("GeoInfo", {}).get("Coordinates", [])
+        lat, lon = None, None
+        for co in coords:
+            if co.get("CoordinateName") == "WGS84":
+                try:
+                    lat = float(co.get("StationLatitude"))
+                    lon = float(co.get("StationLongitude"))
+                except Exception:
+                    pass
+        if lat and lon:
+            we = s.get("WeatherElement", {})
+            st_list.append({
+                "name": name,
+                "county": county,
+                "lat": lat,
+                "lng": lon,
+                "temp": we.get("AirTemperature", "--"),
+                "humid": we.get("RelativeHumidity", "--"),
+                "wind": we.get("WindSpeed", "--"),
+                "rain": we.get("Now", {}).get("Precipitation", "--"),
+                "wx": we.get("Weather", "--")
+            })
+    return st_list
+
+
 if __name__ == "__main__":
     from cwa_service import fetch_weather_forecast
 

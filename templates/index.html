@@ -29,6 +29,7 @@
             --green: #22c55e;
             --cyan: #06b6d4;
             --indigo: #818cf8;
+            --typhoon: #f43f5e;
         }
 
         * {
@@ -59,7 +60,7 @@
             background: #0b1120;
         }
 
-        /* 2. Top-Left Floating Header (Windy Style) */
+        /* 2. Top-Left Floating Header with Timestamp */
         .floating-header {
             position: fixed;
             top: 14px;
@@ -88,30 +89,31 @@
             gap: 6px;
         }
 
-        .floating-header .status-tag {
-            background: rgba(34, 197, 94, 0.15);
-            color: #4ade80;
-            border: 1px solid rgba(34, 197, 94, 0.3);
+        .timestamp-tag {
+            background: rgba(56, 189, 248, 0.12);
+            color: #7dd3fc;
+            border: 1px solid rgba(56, 189, 248, 0.3);
             font-size: 0.68rem;
             font-weight: 600;
-            padding: 2px 7px;
+            padding: 2px 8px;
             border-radius: 20px;
             display: flex;
             align-items: center;
             gap: 4px;
+            font-family: 'Outfit', sans-serif;
         }
 
-        .floating-header .status-tag::before {
+        .timestamp-tag::before {
             content: "";
-            width: 5px;
-            height: 5px;
+            width: 6px;
+            height: 6px;
             background-color: #22c55e;
             border-radius: 50%;
             display: inline-block;
             box-shadow: 0 0 6px #22c55e;
         }
 
-        /* 3. Top-Center Floating Mode Switcher (NEW: 6 Interactive Weather Modes) */
+        /* 3. Top-Center Floating Mode Switcher */
         .floating-mode-bar {
             position: fixed;
             top: 14px;
@@ -160,13 +162,26 @@
             box-shadow: 0 2px 10px rgba(2, 132, 199, 0.45);
         }
 
+        /* Toggle Button Special Styling */
+        .mode-btn.toggle-active {
+            background: rgba(244, 63, 94, 0.2);
+            color: #fb7185;
+            border-color: rgba(244, 63, 94, 0.5);
+        }
+
+        .mode-btn.toggle-active.stations {
+            background: rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+            border-color: rgba(56, 189, 248, 0.5);
+        }
+
         /* 4. Top-Right Floating Control Panel (Basemaps & Tools) */
         .floating-control-panel {
             position: fixed;
             top: 14px;
             right: 14px;
             z-index: 1000;
-            width: 190px;
+            width: 195px;
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
             backdrop-filter: blur(16px);
@@ -324,7 +339,7 @@
             position: fixed;
             top: 60px;
             left: 14px;
-            width: 340px; /* Reduced by half from 620px */
+            width: 340px; /* Reduced by 50% from 620px */
             max-width: calc(100vw - 28px);
             max-height: calc(100vh - 110px);
             background: rgba(15, 23, 42, 0.94);
@@ -440,7 +455,7 @@
         .metric-value.diff { color: var(--gold); }
         .metric-value.city { color: var(--primary); font-size: 0.95rem; }
 
-        /* Compact Chart Box (Reduced by 50%) */
+        /* Compact Chart Box with explicit height wrapper (Fixed Chart.js issue) */
         .chart-box {
             background: rgba(30, 41, 59, 0.5);
             border: 1px solid var(--panel-border);
@@ -455,6 +470,12 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+        }
+
+        .chart-canvas-wrapper {
+            position: relative;
+            height: 110px;
+            width: 100%;
         }
 
         /* Compact Table Box (Reduced by 50%) */
@@ -500,17 +521,6 @@
 
         .temp-high { color: var(--accent-max); font-weight: 700; }
         .temp-low { color: var(--accent-min); font-weight: 700; }
-
-        .diff-badge {
-            display: inline-flex;
-            padding: 1px 5px;
-            border-radius: 10px;
-            font-size: 0.65rem;
-            font-weight: 700;
-            background: rgba(251, 191, 36, 0.15);
-            color: #fbbf24;
-            border: 1px solid rgba(251, 191, 36, 0.35);
-        }
 
         .status-badge {
             display: inline-block;
@@ -565,26 +575,17 @@
             transition: transform 0.3s ease;
         }
 
-        /* Radar Status Badge */
-        .radar-badge {
-            position: fixed;
-            top: 60px;
-            right: 14px;
-            z-index: 1000;
-            background: rgba(15, 23, 42, 0.9);
-            border: 1px solid rgba(56, 189, 248, 0.4);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            color: #38bdf8;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            display: none;
-            align-items: center;
-            gap: 6px;
+        /* Typhoon Center Marker Styling */
+        .typhoon-eye-icon {
+            font-size: 1.4rem;
+            animation: spin-typhoon 4s linear infinite;
+            display: inline-block;
+            filter: drop-shadow(0 0 8px #f43f5e);
         }
-        .radar-badge.active {
-            display: flex;
+
+        @keyframes spin-typhoon {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(-360deg); }
         }
 
         /* Leaflet Dark Popup override */
@@ -605,22 +606,20 @@
     <!-- 1. Fullscreen Map -->
     <div id="map"></div>
 
-    <!-- 2. Top-Left Floating Header -->
+    <!-- 2. Top-Left Floating Header with Timestamp -->
     <div class="floating-header">
         <h1>🌦️ 台灣氣象地圖</h1>
-        <div class="status-tag">22縣市全境即時</div>
+        <div class="timestamp-tag" id="displayTimestamp">🕒 資料更新: {{ update_time }}</div>
     </div>
 
-    <!-- 3. Top-Center Interactive Weather Mode Switcher -->
+    <!-- 3. Top-Center Interactive Weather Mode & Layer Switcher -->
     <div class="floating-mode-bar">
+        <!-- Weather Metric Modes -->
         <button class="mode-btn active" id="mode-temp" onclick="setWeatherMode('temp')">
             <span>🌡️</span><span>氣溫</span>
         </button>
         <button class="mode-btn" id="mode-rain" onclick="setWeatherMode('rain')">
             <span>🌧️</span><span>降雨機率</span>
-        </button>
-        <button class="mode-btn" id="mode-radar" onclick="setWeatherMode('radar')">
-            <span>📡</span><span>即時雷達回波</span>
         </button>
         <button class="mode-btn" id="mode-wind" onclick="setWeatherMode('wind')">
             <span>💨</span><span>風向風速</span>
@@ -631,11 +630,16 @@
         <button class="mode-btn" id="mode-wx" onclick="setWeatherMode('wx')">
             <span>⛅</span><span>天氣現象</span>
         </button>
-    </div>
 
-    <!-- Radar Live Status Tag -->
-    <div class="radar-badge" id="radarBadge">
-        <span>📡 CWA/RainViewer 雷達回波圖層已開啟</span>
+        <span style="width: 1px; height: 16px; background: rgba(255,255,255,0.2); margin: 0 2px;"></span>
+
+        <!-- Special Layer Toggles: Typhoon & Weather Stations -->
+        <button class="mode-btn toggle-active" id="btn-toggle-typhoon" onclick="toggleTyphoonLayer()">
+            <span>🌀</span><span>颱風路徑</span>
+        </button>
+        <button class="mode-btn toggle-active stations" id="btn-toggle-stations" onclick="toggleStationLayer()">
+            <span>📍</span><span>觀測站點</span>
+        </button>
     </div>
 
     <!-- 4. Top-Right Floating Control Panel -->
@@ -730,13 +734,15 @@
                 </div>
             </div>
 
-            <!-- Compact 50%-sized Chart.js Box -->
+            <!-- Compact Fixed-Height Chart.js Container -->
             <div class="chart-box">
                 <h3>
                     <span>📈 氣溫走勢曲線</span>
                     <span style="font-size: 0.68rem; color: var(--text-sub);">單位: °C</span>
                 </h3>
-                <canvas id="tempChart" height="90"></canvas>
+                <div class="chart-canvas-wrapper">
+                    <canvas id="tempChart"></canvas>
+                </div>
             </div>
 
             <!-- Compact 50%-sized Data Table Box -->
@@ -765,12 +771,15 @@
         // Server injected data
         const allRecords = {{ all_records|tojson }};
         const allCities = {{ cities|tojson }};
+        const typhoonsData = {{ typhoons|tojson }};
+        const stationsData = {{ stations|tojson }};
         let currentSelectedLocation = "{{ selected_location }}";
-        let currentMode = "temp"; // 'temp', 'rain', 'radar', 'wind', 'humid', 'wx'
+        let currentMode = "temp"; // 'temp', 'rain', 'wind', 'humid', 'wx'
+        let showTyphoon = true;
+        let showStations = true;
 
         // Precise geographic coordinates for all 22 counties/cities of Taiwan
         const cityCoords = {
-            // 北部地區
             "基隆市": [25.13, 121.74],
             "臺北市": [25.04, 121.56],
             "新北市": [24.99, 121.46],
@@ -778,22 +787,18 @@
             "新竹市": [24.81, 120.97],
             "新竹縣": [24.84, 121.01],
             "宜蘭縣": [24.76, 121.75],
-            // 中部地區
             "苗栗縣": [24.56, 120.82],
             "臺中市": [24.16, 120.68],
             "彰化縣": [24.08, 120.54],
             "南投縣": [23.91, 120.69],
             "雲林縣": [23.71, 120.43],
-            // 南部地區
             "嘉義市": [23.48, 120.45],
             "嘉義縣": [23.45, 120.26],
             "臺南市": [22.99, 120.21],
             "高雄市": [22.63, 120.31],
             "屏東縣": [22.67, 120.49],
-            // 東部地區
             "花蓮縣": [23.99, 121.60],
             "臺東縣": [22.76, 121.14],
-            // 離島地區
             "澎湖縣": [23.57, 119.58],
             "金門縣": [24.44, 118.38],
             "連江縣": [26.16, 119.95]
@@ -810,32 +815,28 @@
         L.control.zoom({ position: 'topleft' }).addTo(map);
 
         // ── Bulletproof Base Map Layers ─────────────────────────
-        // 1. ESRI World Dark Gray Base (Ultra-reliable dark basemap)
         const esriDarkTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
             attribution: '&copy; Esri, DeLorme, NAVTEQ',
             maxZoom: 16
         });
 
-        // 2. CARTO Dark Matter (Clean dark vector-styled)
         const cartoDarkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
             subdomains: 'abcd',
             maxZoom: 19
         });
 
-        // 3. ESRI Satellite Imagery
         const satelliteTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             attribution: '&copy; Esri, Maxar, Earthstar Geographics',
             maxZoom: 18
         });
 
-        // 4. OpenStreetMap Standard
         const streetTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors',
             maxZoom: 19
         });
 
-        // Set default basemap: ESRI Dark Gray Base (Fixed dark theme!)
+        // Default basemap: ESRI Dark Gray Base
         esriDarkTileLayer.addTo(map);
         let currentBasemap = 'esridark';
 
@@ -861,31 +862,13 @@
             map.flyTo([23.85, 120.95], 7.8, { duration: 1.0 });
         }
 
-        // ── 2. Live Radar Tile Layer ────────────────────────────
-        let radarTileLayer = null;
+        // ── 2. Layer Groups ─────────────────────────────────────
+        const markerGroup = L.layerGroup().addTo(map);
+        const typhoonLayerGroup = L.layerGroup().addTo(map);
+        const stationLayerGroup = L.layerGroup().addTo(map);
+        const markersByCity = {};
 
-        async function initRadarLayer() {
-            try {
-                const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-                const data = await res.json();
-                const host = data.host;
-                const pastFrames = data.radar.past;
-                if (pastFrames && pastFrames.length > 0) {
-                    const latest = pastFrames[pastFrames.length - 1];
-                    const radarUrl = `${host}${latest.path}/256/{z}/{x}/{y}/2/1_1.png`;
-                    radarTileLayer = L.tileLayer(radarUrl, {
-                        opacity: 0.75,
-                        zIndex: 500,
-                        attribution: '&copy; RainViewer Live Radar'
-                    });
-                }
-            } catch (e) {
-                console.warn("Could not load live radar tiles:", e);
-            }
-        }
-        initRadarLayer();
-
-        // ── 3. Find Latest Record per City ──────────────────────
+        // Find Latest Record per City
         const latestByCity = {};
         allRecords.forEach(r => {
             if (!latestByCity[r.locationName]) {
@@ -893,10 +876,167 @@
             }
         });
 
-        // ── 4. Weather Markers Rendering according to Active Mode ──
-        const markerGroup = L.layerGroup().addTo(map);
-        const markersByCity = {};
+        // ── 3. Typhoon Track Rendering ──────────────────────────
+        function renderTyphoonTracks() {
+            typhoonLayerGroup.clearLayers();
+            if (!showTyphoon || !typhoonsData || typhoonsData.length === 0) return;
 
+            typhoonsData.forEach(ty => {
+                const pastPts = ty.past || [];
+                const fcPts = ty.forecast || [];
+
+                // 1. Draw Past Track Line (Red solid line)
+                if (pastPts.length > 1) {
+                    const latlngs = pastPts.map(p => [p.lat, p.lng]);
+                    L.polyline(latlngs, {
+                        color: '#f43f5e',
+                        weight: 3.5,
+                        opacity: 0.85
+                    }).addTo(typhoonLayerGroup);
+
+                    // Past points dots
+                    pastPts.forEach((p, idx) => {
+                        if (idx % 3 === 0 || idx === pastPts.length - 1) {
+                            const ptMarker = L.circleMarker([p.lat, p.lng], {
+                                radius: 4,
+                                color: '#ffffff',
+                                fillColor: '#f43f5e',
+                                fillOpacity: 0.9,
+                                weight: 1.5
+                            }).addTo(typhoonLayerGroup);
+
+                            const pTime = p.time ? p.time.replace('T', ' ').substring(5, 16) : '';
+                            ptMarker.bindPopup(`
+                                <div style="font-size:0.8rem; text-align:center;">
+                                    <b style="color:#f43f5e;">🌀 ${ty.name} (歷史位置)</b><br>
+                                    時間: ${pTime}<br>
+                                    風速: ${p.wind} m/s ｜ 氣壓: ${p.pressure} hPa<br>
+                                    移速: ${p.speed} km/h (${p.dir})
+                                </div>
+                            `);
+                        }
+                    });
+                }
+
+                // 2. Current Eye Position
+                if (pastPts.length > 0) {
+                    const currentEye = pastPts[pastPts.length - 1];
+                    const eyeIcon = L.divIcon({
+                        html: `<span class="typhoon-eye-icon">🌀</span>`,
+                        className: '',
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14]
+                    });
+
+                    const eyeMarker = L.marker([currentEye.lat, currentEye.lng], { icon: eyeIcon }).addTo(typhoonLayerGroup);
+                    eyeMarker.bindPopup(`
+                        <div style="font-size:0.85rem; text-align:center; min-width:140px;">
+                            <div style="font-size:1.0rem; font-weight:800; color:#f43f5e;">🌀 ${ty.name} 現行中心</div>
+                            <div style="font-size:0.75rem; color:#94a3b8; margin:3px 0;">緯度: ${currentEye.lat}°N ｜ 經度: ${currentEye.lng}°E</div>
+                            <div style="color:#f8fafc; font-weight:700;">近中心最大風速: ${currentEye.wind} m/s</div>
+                            <div style="color:#cbd5e1; font-size:0.75rem;">中心氣壓: ${currentEye.pressure} hPa</div>
+                            <div style="color:#cbd5e1; font-size:0.75rem;">移動: ${currentEye.dir} 向 ${currentEye.speed} km/h</div>
+                        </div>
+                    `);
+                }
+
+                // 3. Draw Forecast Track Line (Yellow/Orange dashed line)
+                if (fcPts.length > 0 && pastPts.length > 0) {
+                    const currentEye = pastPts[pastPts.length - 1];
+                    const fcCoords = [[currentEye.lat, currentEye.lng], ...fcPts.map(p => [p.lat, p.lng])];
+
+                    L.polyline(fcCoords, {
+                        color: '#f59e0b',
+                        weight: 2.5,
+                        dashArray: '6, 8',
+                        opacity: 0.9
+                    }).addTo(typhoonLayerGroup);
+
+                    // Forecast points and 70% probability circles
+                    fcPts.forEach(p => {
+                        // 70% Probability Cone Circle
+                        if (p.radius && p.radius > 0) {
+                            L.circle([p.lat, p.lng], {
+                                radius: p.radius * 1000,
+                                color: '#f59e0b',
+                                fillColor: '#f59e0b',
+                                fillOpacity: 0.1,
+                                weight: 1
+                            }).addTo(typhoonLayerGroup);
+                        }
+
+                        // Forecast Dot
+                        const fcMarker = L.circleMarker([p.lat, p.lng], {
+                            radius: 4.5,
+                            color: '#ffffff',
+                            fillColor: '#f59e0b',
+                            fillOpacity: 1,
+                            weight: 1.5
+                        }).addTo(typhoonLayerGroup);
+
+                        fcMarker.bindPopup(`
+                            <div style="font-size:0.8rem; text-align:center;">
+                                <b style="color:#f59e0b;">🔮 ${ty.name} 預測位置 (+${p.hour}小時)</b><br>
+                                預測風速: ${p.wind} m/s<br>
+                                70% 暴風機率半徑: ${p.radius} km
+                            </div>
+                        `);
+                    });
+                }
+            });
+        }
+
+        function toggleTyphoonLayer() {
+            showTyphoon = !showTyphoon;
+            const btn = document.getElementById('btn-toggle-typhoon');
+            if (showTyphoon) {
+                btn.classList.add('toggle-active');
+                renderTyphoonTracks();
+            } else {
+                btn.classList.remove('toggle-active');
+                typhoonLayerGroup.clearLayers();
+            }
+        }
+
+        // ── 4. Weather Station Locations (Dots) Rendering ──────
+        function renderStationDots() {
+            stationLayerGroup.clearLayers();
+            if (!showStations || !stationsData || stationsData.length === 0) return;
+
+            stationsData.forEach(st => {
+                const dot = L.circleMarker([st.lat, st.lng], {
+                    radius: 3.5,
+                    color: '#ffffff',
+                    fillColor: '#38bdf8',
+                    fillOpacity: 0.85,
+                    weight: 1
+                }).addTo(stationLayerGroup);
+
+                dot.bindPopup(`
+                    <div style="font-size:0.8rem; text-align:center; min-width:130px;">
+                        <div style="font-size:0.92rem; font-weight:800; color:#38bdf8; margin-bottom:2px;">📍 ${st.name} 測站</div>
+                        <div style="font-size:0.72rem; color:#94a3b8; margin-bottom:4px;">${st.county}</div>
+                        <div style="color:#f8fafc; font-weight:700;">氣溫: ${st.temp}°C ｜ 濕度: ${st.humid}%</div>
+                        <div style="color:#cbd5e1; font-size:0.75rem;">風速: ${st.wind} m/s ｜ 雨量: ${st.rain} mm</div>
+                        <div style="color:#cbd5e1; font-size:0.75rem;">天氣現象: ${st.wx}</div>
+                    </div>
+                `);
+            });
+        }
+
+        function toggleStationLayer() {
+            showStations = !showStations;
+            const btn = document.getElementById('btn-toggle-stations');
+            if (showStations) {
+                btn.classList.add('toggle-active', 'stations');
+                renderStationDots();
+            } else {
+                btn.classList.remove('toggle-active', 'stations');
+                stationLayerGroup.clearLayers();
+            }
+        }
+
+        // ── 5. County Weather Markers Rendering ─────────────────
         function getMarkerContent(cityName, mode) {
             const data = latestByCity[cityName] || {};
             const avgTemp = data.mint && data.maxt ? (data.mint + data.maxt) / 2 : 25;
@@ -925,13 +1065,6 @@
                         color: color
                     };
                 }
-                case 'radar': {
-                    const avgT = Math.round(avgTemp);
-                    return {
-                        html: `<span class="marker-name">${shortName}</span><span class="marker-val" style="color:#38bdf8;">📡 ${avgT}°</span>`,
-                        color: '#38bdf8'
-                    };
-                }
                 case 'wind': {
                     const speed = data.windSpeed !== undefined ? Number(data.windSpeed).toFixed(1) : '2.0';
                     const dir = data.windDirection !== undefined ? Number(data.windDirection) : 45;
@@ -945,7 +1078,6 @@
                 }
                 case 'humid': {
                     const humid = data.humidity !== undefined ? Math.round(data.humidity) : 75;
-                    const ci = data.ci || '舒適';
                     let color = '#38bdf8';
                     if (humid >= 80) color = '#6366f1';
                     else if (humid >= 65) color = '#06b6d4';
@@ -1032,28 +1164,18 @@
             });
         }
 
-        // ── 5. Mode Switcher Handler ────────────────────────────
+        // ── 6. Mode Switcher Handler ────────────────────────────
         function setWeatherMode(mode) {
             currentMode = mode;
 
             // Highlight mode buttons
-            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                if (btn.id.startsWith('mode-')) {
+                    btn.classList.remove('active');
+                }
+            });
             const activeBtn = document.getElementById('mode-' + mode);
             if (activeBtn) activeBtn.classList.add('active');
-
-            // Radar layer toggle
-            const radarBadge = document.getElementById('radarBadge');
-            if (mode === 'radar') {
-                if (radarTileLayer && !map.hasLayer(radarTileLayer)) {
-                    radarTileLayer.addTo(map);
-                }
-                radarBadge.classList.add('active');
-            } else {
-                if (radarTileLayer && map.hasLayer(radarTileLayer)) {
-                    map.removeLayer(radarTileLayer);
-                }
-                radarBadge.classList.remove('active');
-            }
 
             // Update Legend
             updateLegend(mode);
@@ -1081,12 +1203,6 @@
                     gradient.style.background = 'linear-gradient(to right, #e0f2fe, #7dd3fc, #38bdf8, #0284c7, #4338ca)';
                     labels.innerHTML = '<span>0%</span><span>20%</span><span>40%</span><span>60%</span><span>80%</span><span>100%</span>';
                     break;
-                case 'radar':
-                    title.innerText = '雷達回波強度';
-                    unit.innerText = 'dBZ';
-                    gradient.style.background = 'linear-gradient(to right, #00ffff, #0000ff, #00ff00, #ffff00, #ff0000, #ff00ff)';
-                    labels.innerHTML = '<span>5</span><span>15</span><span>25</span><span>35</span><span>45</span><span>55+</span>';
-                    break;
                 case 'wind':
                     title.innerText = '風速大小';
                     unit.innerText = 'm/s';
@@ -1108,7 +1224,7 @@
             }
         }
 
-        // ── 6. Compact Chart.js Instance & Table Update ─────────
+        // ── 7. Bulletproof Chart.js Instance & Table Update ─────
         let tempChart = null;
 
         function updateChartAndTable(cityName) {
@@ -1133,44 +1249,49 @@
                 document.getElementById('kpi-pop-wind').innerText = '--';
             }
 
-            // Compact Chart Data
-            const labels = cityData.map(r => r.dataDate.substring(5)); // Format as MM-DD
-            const minTemps = cityData.map(r => r.mint);
-            const maxTemps = cityData.map(r => r.maxt);
+            // Clean, Safe Chart Labels & Values
+            const labels = cityData.map(r => {
+                const d = String(r.dataDate || '');
+                return d.length > 5 ? d.substring(5) : d;
+            });
+            const minTemps = cityData.map(r => Number(r.mint));
+            const maxTemps = cityData.map(r => Number(r.maxt));
 
+            // Cleanly destroy previous chart instance to prevent canvas memory/sizing leaks
             if (tempChart) {
-                tempChart.data.labels = labels;
-                tempChart.data.datasets[0].data = maxTemps;
-                tempChart.data.datasets[1].data = minTemps;
-                tempChart.update();
-            } else {
-                const ctx = document.getElementById('tempChart').getContext('2d');
+                tempChart.destroy();
+                tempChart = null;
+            }
+
+            const canvas = document.getElementById('tempChart');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
                 tempChart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: labels,
+                        labels: labels.length > 0 ? labels : ['今日', '明日'],
                         datasets: [
                             {
                                 label: '最高溫',
-                                data: maxTemps,
+                                data: maxTemps.length > 0 ? maxTemps : [32, 30],
                                 borderColor: '#ef4444',
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                borderWidth: 2,
+                                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                                borderWidth: 2.5,
                                 tension: 0.35,
                                 fill: true,
-                                pointRadius: 3,
+                                pointRadius: 3.5,
                                 pointHoverRadius: 6,
                                 pointBackgroundColor: '#ef4444'
                             },
                             {
                                 label: '最低溫',
-                                data: minTemps,
+                                data: minTemps.length > 0 ? minTemps : [25, 24],
                                 borderColor: '#38bdf8',
-                                backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                                borderWidth: 2,
+                                backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                                borderWidth: 2.5,
                                 tension: 0.35,
                                 fill: true,
-                                pointRadius: 3,
+                                pointRadius: 3.5,
                                 pointHoverRadius: 6,
                                 pointBackgroundColor: '#38bdf8'
                             }
@@ -1225,14 +1346,15 @@
                 tbody.innerHTML = '<tr><td colspan="5">暫無此縣市資料</td></tr>';
             } else {
                 cityData.forEach(rec => {
-                    const avg = (rec.maxt + rec.mint) / 2;
+                    const avg = (Number(rec.maxt) + Number(rec.mint)) / 2;
                     let badgeHtml = '<span class="status-badge comfy">舒適</span>';
                     if (avg >= 28) badgeHtml = '<span class="status-badge hot">炎熱</span>';
                     else if (avg < 22) badgeHtml = '<span class="status-badge cool">涼爽</span>';
 
+                    const dStr = String(rec.dataDate || '');
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td><strong>${rec.dataDate.substring(5)}</strong></td>
+                        <td><strong>${dStr.length > 5 ? dStr.substring(5) : dStr}</strong></td>
                         <td><span class="temp-low">${rec.mint}°</span> / <span class="temp-high">${rec.maxt}°</span></td>
                         <td>${rec.wx || '多雲'}</td>
                         <td style="color:#38bdf8;">🌧️ ${rec.pop || '0'}%</td>
@@ -1243,7 +1365,7 @@
             }
         }
 
-        // ── 7. City Selection ───────────────────────────────────
+        // ── 8. City Selection ───────────────────────────────────
         function selectCity(cityName) {
             currentSelectedLocation = cityName;
 
@@ -1270,7 +1392,7 @@
             }
         }
 
-        // ── 8. Window Controls ──────────────────────────────────
+        // ── 9. Window Controls ──────────────────────────────────
         const chartWindow = document.getElementById('chart-window');
 
         function toggleChartWindow() {
@@ -1294,7 +1416,7 @@
             chartWindow.classList.add('hidden');
         }
 
-        // ── 9. CWA Data Sync ────────────────────────────────────
+        // ── 10. CWA Data Sync ───────────────────────────────────
         async function syncCwaData() {
             const spinner = document.getElementById('sync-spinner');
             spinner.innerText = "⏳";
@@ -1302,7 +1424,10 @@
                 const res = await fetch('/api/sync');
                 const data = await res.json();
                 if (data.status === "success") {
-                    alert(`✅ 氣象與觀測資料同步成功！已更新 ${data.count} 筆各縣市資料。`);
+                    if (data.update_time) {
+                        document.getElementById('displayTimestamp').innerText = `🕒 資料更新: ${data.update_time}`;
+                    }
+                    alert(`✅ 氣象、颱風路徑與觀測站資料同步成功！已更新 ${data.count} 筆各縣市資料。`);
                     window.location.reload();
                 } else {
                     alert("❌ 同步失敗: " + data.message);
@@ -1316,6 +1441,8 @@
 
         // Initial Setup
         renderMarkers();
+        renderTyphoonTracks();
+        renderStationDots();
         updateChartAndTable(currentSelectedLocation);
     </script>
 </body>

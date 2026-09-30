@@ -98,6 +98,36 @@ def fetch_station_observations(dataset_id: str = "O-A0003-001") -> dict:
         return {}
 
 
+def fetch_typhoon_data(dataset_id: str = "W-C0034-005") -> dict:
+    """
+    Fetch real-time typhoon / tropical cyclone track and forecast data from CWA Open Data API.
+    """
+    try:
+        api_key = get_cwa_api_key()
+    except Exception as e:
+        logging.warning(f"CWA_API_KEY not available for typhoon: {e}")
+        return {}
+
+    url = f"{CWA_API_BASE_URL}/{dataset_id}"
+    params = {"Authorization": api_key, "format": "JSON"}
+
+    try:
+        response = requests.get(url, params=params, timeout=15)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.SSLError:
+        try:
+            response = requests.get(url, params=params, verify=False, timeout=15)
+            response.raise_for_status()
+            return response.json()
+        except Exception as err:
+            logging.warning(f"Failed to fetch typhoon data (SSL retry): {err}")
+            return {}
+    except Exception as e:
+        logging.warning(f"Failed to fetch typhoon data: {e}")
+        return {}
+
+
 if __name__ == "__main__":
     print("=== Stage 1 Test: CWA API Data Acquisition ===")
     try:
