@@ -13,20 +13,28 @@ from typing import List
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
+# DEFAULT_DB_PATH is used as a fallback; the actual path is resolved at call time
+# via get_db_path() so that Vercel's /tmp override (set via DB_PATH env var) works.
 DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), "data.db")
 
 
-def get_connection(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
+def get_db_path() -> str:
+    """Resolve the active DB path: honours DB_PATH env var (set to /tmp on Vercel)."""
+    return os.environ.get("DB_PATH", DEFAULT_DB_PATH)
+
+
+def get_connection(db_path: str = None) -> sqlite3.Connection:
     """Establish and return a connection to the SQLite database."""
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path or get_db_path())
     return conn
 
 
-def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
+def init_db(db_path: str = None) -> None:
     """
     Initialize SQLite database and create TemperatureForecasts table (Unit 08, 09).
     Enforces UNIQUE(locationName, dataDate) to store each city/county forecast accurately.
     """
+    db_path = db_path or get_db_path()
     with get_connection(db_path) as conn:
         cursor = conn.cursor()
         # Check if table exists and inspect columns
@@ -53,7 +61,7 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
     logging.info(f"Database initialized at: {db_path}")
 
 
-def save_forecast_to_db(df: pd.DataFrame, db_path: str = DEFAULT_DB_PATH) -> int:
+def save_forecast_to_db(df: pd.DataFrame, db_path: str = None) -> int:
     """
     Save or update city-level weather forecast records into TemperatureForecasts.
     Uses INSERT OR REPLACE to ensure idempotency.
@@ -65,6 +73,7 @@ def save_forecast_to_db(df: pd.DataFrame, db_path: str = DEFAULT_DB_PATH) -> int
     Returns:
         int: Number of rows inserted/updated.
     """
+    db_path = db_path or get_db_path()
     if df.empty:
         logging.warning("Provided DataFrame is empty. Nothing saved to DB.")
         return 0
@@ -90,8 +99,9 @@ def save_forecast_to_db(df: pd.DataFrame, db_path: str = DEFAULT_DB_PATH) -> int
     return len(records)
 
 
-def query_distinct_regions(db_path: str = DEFAULT_DB_PATH) -> List[str]:
+def query_distinct_regions(db_path: str = None) -> List[str]:
     """Query list of distinct region names from TemperatureForecasts."""
+    db_path = db_path or get_db_path()
     init_db(db_path)
     sql = "SELECT DISTINCT regionName FROM TemperatureForecasts ORDER BY regionName;"
     with get_connection(db_path) as conn:
@@ -101,8 +111,9 @@ def query_distinct_regions(db_path: str = DEFAULT_DB_PATH) -> List[str]:
     return [r[0] for r in rows]
 
 
-def query_distinct_cities(db_path: str = DEFAULT_DB_PATH) -> List[str]:
+def query_distinct_cities(db_path: str = None) -> List[str]:
     """Query list of distinct county/city names from TemperatureForecasts."""
+    db_path = db_path or get_db_path()
     init_db(db_path)
     sql = "SELECT DISTINCT locationName FROM TemperatureForecasts ORDER BY locationName;"
     with get_connection(db_path) as conn:
@@ -112,8 +123,9 @@ def query_distinct_cities(db_path: str = DEFAULT_DB_PATH) -> List[str]:
     return [r[0] for r in rows]
 
 
-def query_forecast_by_city(city_name: str, db_path: str = DEFAULT_DB_PATH) -> pd.DataFrame:
+def query_forecast_by_city(city_name: str, db_path: str = None) -> pd.DataFrame:
     """Query weather forecast for a specific city/county."""
+    db_path = db_path or get_db_path()
     init_db(db_path)
     sql = """
     SELECT id, regionName, locationName, dataDate, mint, maxt 
@@ -126,8 +138,9 @@ def query_forecast_by_city(city_name: str, db_path: str = DEFAULT_DB_PATH) -> pd
     return df
 
 
-def query_forecast_by_region(region_name: str, db_path: str = DEFAULT_DB_PATH) -> pd.DataFrame:
+def query_forecast_by_region(region_name: str, db_path: str = None) -> pd.DataFrame:
     """Query weather forecast for a specific region."""
+    db_path = db_path or get_db_path()
     init_db(db_path)
     sql = """
     SELECT id, regionName, locationName, dataDate, mint, maxt 
@@ -140,8 +153,9 @@ def query_forecast_by_region(region_name: str, db_path: str = DEFAULT_DB_PATH) -
     return df
 
 
-def query_all_forecasts(db_path: str = DEFAULT_DB_PATH) -> pd.DataFrame:
+def query_all_forecasts(db_path: str = None) -> pd.DataFrame:
     """Query all forecast records from TemperatureForecasts."""
+    db_path = db_path or get_db_path()
     init_db(db_path)
     sql = "SELECT id, regionName, locationName, dataDate, mint, maxt FROM TemperatureForecasts ORDER BY regionName, locationName, dataDate ASC;"
     with get_connection(db_path) as conn:

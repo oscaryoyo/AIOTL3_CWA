@@ -5,33 +5,31 @@ Vercel compatible: uses /tmp for writable SQLite storage.
 """
 
 import os
-import sqlite3
+import shutil
+
+# ── Vercel Compatibility ───────────────────────────────────────────────────────
+# Must set DB_PATH env var BEFORE importing database.py so get_db_path() resolves
+# to /tmp (the only writable directory on Vercel's read-only filesystem).
+_IS_VERCEL = os.environ.get("VERCEL") == "1" or os.environ.get("VERCEL_ENV") is not None
+if _IS_VERCEL and not os.environ.get("DB_PATH"):
+    db_tmp = "/tmp/data.db"
+    os.environ["DB_PATH"] = db_tmp
+    # Copy bundled data.db to /tmp if it doesn't exist yet in the container
+    if not os.path.exists(db_tmp):
+        original_db = os.path.join(os.path.dirname(__file__), "data.db")
+        if os.path.exists(original_db):
+            shutil.copy2(original_db, db_tmp)
+
 import pandas as pd
 from flask import Flask, render_template, jsonify, request
 from fetch_data import run_etl_pipeline
-
-# ── Vercel Compatibility: use /tmp (writable) instead of project root ──────────
-# On Vercel, the project directory is read-only; /tmp is the only writable space.
-_IS_VERCEL = os.environ.get("VERCEL") == "1" or os.environ.get("VERCEL_ENV") is not None
-if _IS_VERCEL:
-    _DB_PATH = "/tmp/data.db"
-    os.environ.setdefault("DB_PATH", _DB_PATH)
-else:
-    _DB_PATH = None  # use default from database.py
-
 from database import (
     query_all_forecasts,
     query_distinct_regions,
     query_distinct_cities,
     query_forecast_by_region,
     query_forecast_by_city,
-    DEFAULT_DB_PATH
 )
-
-# Override DB path for Vercel
-if _DB_PATH:
-    import database as _db_module
-    _db_module.DEFAULT_DB_PATH = _DB_PATH
 
 app = Flask(__name__)
 
@@ -57,7 +55,7 @@ def index():
     ensure_db_ready()
     regions = query_distinct_regions()
     cities = query_distinct_cities()
-    
+
     selected_city = request.args.get("city")
     selected_region = request.args.get("region")
 
@@ -70,7 +68,7 @@ def index():
     else:
         active_location = "臺北市" if "臺北市" in cities else (cities[0] if cities else "北部地區")
         active_data = query_forecast_by_city(active_location) if active_location in cities else query_forecast_by_region(active_location)
-    
+
     all_data = query_all_forecasts()
 
     location_records = active_data.to_dict(orient="records") if not active_data.empty else []
