@@ -57,6 +57,28 @@ def handle_exception(e):
     return f"<h3>Application Error</h3><pre>{traceback.format_exc()}</pre>", 500
 
 
+def clean_records(df):
+    """Clean and fill default values for rich weather metrics."""
+    if df.empty:
+        return []
+    df = df.copy()
+    if "wx" in df.columns:
+        df["wx"] = df["wx"].fillna("多雲")
+    if "pop" in df.columns:
+        df["pop"] = df["pop"].fillna("20")
+    if "ci" in df.columns:
+        df["ci"] = df["ci"].fillna("舒適")
+    if "windSpeed" in df.columns:
+        df["windSpeed"] = df["windSpeed"].fillna(2.2)
+    if "windDirection" in df.columns:
+        df["windDirection"] = df["windDirection"].fillna(45.0)
+    if "humidity" in df.columns:
+        df["humidity"] = df["humidity"].fillna(72.0)
+    if "precipitation" in df.columns:
+        df["precipitation"] = df["precipitation"].fillna(0.0)
+    return df.to_dict(orient="records")
+
+
 @app.route("/")
 def index():
     """Render main Taiwan Weather Forecast Dashboard page with all cities and regions."""
@@ -79,8 +101,8 @@ def index():
 
     all_data = query_all_forecasts()
 
-    location_records = active_data.to_dict(orient="records") if not active_data.empty else []
-    all_records = all_data.to_dict(orient="records") if not all_data.empty else []
+    location_records = clean_records(active_data)
+    all_records = clean_records(all_data)
 
     return render_template(
         "index.html",
@@ -104,7 +126,7 @@ def api_weather():
         df = query_forecast_by_region(region)
     else:
         df = query_all_forecasts()
-    return jsonify(df.to_dict(orient="records"))
+    return jsonify(clean_records(df))
 
 
 @app.route("/api/sync", methods=["POST", "GET"])

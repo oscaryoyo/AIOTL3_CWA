@@ -7,26 +7,28 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
     <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Leaflet CSS & JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Leaflet CSS & JS via jsdelivr (Fast and rock-solid) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         :root {
-            --bg-dark: #090d16;
+            --bg-dark: #080d1a;
             --panel-bg: rgba(15, 23, 42, 0.88);
             --panel-border: rgba(255, 255, 255, 0.12);
             --primary: #38bdf8;
             --primary-hover: #0284c7;
             --accent-max: #ef4444;
-            --accent-min: #3b82f6;
+            --accent-min: #38bdf8;
             --text-main: #f8fafc;
             --text-sub: #94a3b8;
             --gold: #fbbf24;
             --green: #22c55e;
+            --cyan: #06b6d4;
+            --indigo: #818cf8;
         }
 
         * {
@@ -60,40 +62,39 @@
         /* 2. Top-Left Floating Header (Windy Style) */
         .floating-header {
             position: fixed;
-            top: 16px;
-            left: 16px;
+            top: 14px;
+            left: 14px;
             z-index: 1000;
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border-radius: 14px;
-            padding: 10px 18px;
+            border-radius: 12px;
+            padding: 8px 14px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
             display: flex;
             align-items: center;
-            gap: 12px;
-            transition: all 0.3s ease;
+            gap: 10px;
         }
 
         .floating-header h1 {
-            font-size: 1.15rem;
+            font-size: 1.02rem;
             font-weight: 800;
             background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .floating-header .status-tag {
             background: rgba(34, 197, 94, 0.15);
             color: #4ade80;
             border: 1px solid rgba(34, 197, 94, 0.3);
-            font-size: 0.72rem;
+            font-size: 0.68rem;
             font-weight: 600;
-            padding: 3px 8px;
+            padding: 2px 7px;
             border-radius: 20px;
             display: flex;
             align-items: center;
@@ -102,100 +103,129 @@
 
         .floating-header .status-tag::before {
             content: "";
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
             background-color: #22c55e;
             border-radius: 50%;
             display: inline-block;
-            box-shadow: 0 0 8px #22c55e;
+            box-shadow: 0 0 6px #22c55e;
         }
 
-        /* 3. Top-Right Floating Control Panel (Layers & Tools) */
-        .floating-control-panel {
+        /* 3. Top-Center Floating Mode Switcher (NEW: 6 Interactive Weather Modes) */
+        .floating-mode-bar {
             position: fixed;
-            top: 16px;
-            right: 16px;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 1000;
-            width: 220px;
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border-radius: 14px;
-            padding: 14px;
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45);
+            border-radius: 30px;
+            padding: 4px 6px;
             display: flex;
-            flex-direction: column;
-            gap: 12px;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 90vw;
+            overflow-x: auto;
         }
 
-        .panel-section-title {
-            font-size: 0.72rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: var(--text-sub);
-            margin-bottom: 4px;
-        }
-
-        /* Main Open Window Button */
-        .btn-open-window {
-            background: linear-gradient(135deg, #0284c7, #2563eb);
-            color: #ffffff;
-            border: none;
-            padding: 10px 14px;
-            border-radius: 10px;
-            font-size: 0.88rem;
+        .mode-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: #94a3b8;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
             font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
-            justify-content: center;
+            gap: 5px;
+            white-space: nowrap;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .mode-btn:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            color: #ffffff;
+            border-color: rgba(56, 189, 248, 0.5);
+            box-shadow: 0 2px 10px rgba(2, 132, 199, 0.45);
+        }
+
+        /* 4. Top-Right Floating Control Panel (Basemaps & Tools) */
+        .floating-control-panel {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            z-index: 1000;
+            width: 190px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+            display: flex;
+            flex-direction: column;
             gap: 8px;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
-            transition: all 0.2s ease;
         }
 
-        .btn-open-window:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
-            background: linear-gradient(135deg, #0369a1, #1d4ed8);
+        .panel-section-title {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-sub);
+            margin-bottom: 2px;
         }
 
-        /* Basemap Toggle Buttons */
-        .basemap-toggle {
+        .basemap-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 6px;
+            gap: 4px;
         }
 
         .basemap-btn {
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             color: #cbd5e1;
-            padding: 6px 0;
+            padding: 5px 0;
             text-align: center;
-            border-radius: 7px;
-            font-size: 0.78rem;
+            border-radius: 6px;
+            font-size: 0.72rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+        }
+
+        .basemap-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
         }
 
         .basemap-btn.active {
             background: #0284c7;
             color: #fff;
             border-color: #38bdf8;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
         }
 
-        /* Action Buttons */
         .panel-action-btn {
             background: rgba(255, 255, 255, 0.06);
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: #f1f5f9;
-            padding: 7px 10px;
+            padding: 6px 10px;
             border-radius: 8px;
-            font-size: 0.8rem;
+            font-size: 0.76rem;
             font-weight: 600;
             cursor: pointer;
             display: flex;
@@ -210,10 +240,10 @@
             border-color: rgba(255, 255, 255, 0.2);
         }
 
-        /* 4. Bottom-Center Quick City Selector Chips */
+        /* 5. Bottom-Center Quick City Selector Chips */
         .floating-city-bar {
             position: fixed;
-            bottom: 22px;
+            bottom: 16px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
@@ -222,22 +252,22 @@
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border-radius: 30px;
-            padding: 6px 12px;
+            padding: 5px 10px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
             overflow-x: auto;
-            max-width: 92vw;
+            max-width: 90vw;
         }
 
         .city-chip {
             background: transparent;
             border: none;
             color: #94a3b8;
-            padding: 5px 13px;
+            padding: 4px 10px;
             border-radius: 20px;
-            font-size: 0.82rem;
+            font-size: 0.76rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -253,71 +283,71 @@
             background: #0284c7;
             color: #ffffff;
             font-weight: 700;
-            box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4);
+            box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
         }
 
-        /* 5. Bottom-Right Temperature Scale Bar (Windy-style) */
+        /* 6. Dynamic Legend Bar (Bottom Right) */
         .temp-legend-bar {
             position: fixed;
-            bottom: 22px;
-            right: 16px;
+            bottom: 16px;
+            right: 14px;
             z-index: 1000;
-            width: 250px;
+            width: 220px;
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border-radius: 12px;
-            padding: 8px 12px;
+            border-radius: 10px;
+            padding: 6px 10px;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
         }
 
         .legend-ticks {
             display: flex;
             justify-content: space-between;
-            font-size: 0.68rem;
+            font-size: 0.65rem;
             color: var(--text-sub);
             font-family: 'Outfit', sans-serif;
             font-weight: 600;
         }
 
         .legend-gradient {
-            height: 10px;
+            height: 7px;
             width: 100%;
-            border-radius: 5px;
-            background: linear-gradient(to right, #2c7bb6, #5aa2cf, #abd9e9, #7fcdbb, #d9ef8b, #fee08b, #fdae61, #f46d43, #d73027);
-            margin: 4px 0;
+            border-radius: 4px;
+            margin: 3px 0;
+            transition: background 0.3s ease;
         }
 
-        /* 6. Floating Analytics / Chart & Table Window (Modal) */
+        /* 7. Compact 50%-sized Forecast Window (Modal) */
         .weather-window {
             position: fixed;
-            top: 65px;
-            left: 20px;
-            width: 620px;
-            max-width: calc(100vw - 40px);
-            max-height: calc(100vh - 120px);
+            top: 60px;
+            left: 14px;
+            width: 340px; /* Reduced by half from 620px */
+            max-width: calc(100vw - 28px);
+            max-height: calc(100vh - 110px);
             background: rgba(15, 23, 42, 0.94);
             border: 1px solid rgba(255, 255, 255, 0.16);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border-radius: 20px;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+            border-radius: 14px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
             z-index: 1100;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
         }
 
         .weather-window.hidden {
-            transform: scale(0.92) translateY(20px);
+            transform: scale(0.92) translateY(15px);
             opacity: 0;
             pointer-events: none;
         }
 
         .weather-window-header {
-            padding: 14px 18px;
+            padding: 10px 14px;
             background: rgba(30, 41, 59, 0.7);
             border-bottom: 1px solid var(--panel-border);
             display: flex;
@@ -326,144 +356,130 @@
         }
 
         .weather-window-header h2 {
-            font-size: 1.05rem;
+            font-size: 0.92rem;
             font-weight: 700;
             color: #f8fafc;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .window-controls {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .window-ctrl-btn {
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.12);
             color: #94a3b8;
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             transition: all 0.2s;
         }
 
         .window-ctrl-btn:hover {
-            background: rgba(255, 255, 255, 0.16);
-            color: #fff;
-        }
-
-        .window-ctrl-btn.close:hover {
             background: #ef4444;
             color: #fff;
             border-color: #ef4444;
         }
 
         .weather-window-body {
-            padding: 18px;
+            padding: 12px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 10px;
             user-select: text;
         }
 
-        /* Custom Scrollbar */
+        /* Compact Scrollbar */
         .weather-window-body::-webkit-scrollbar {
-            width: 6px;
-        }
-        .weather-window-body::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.2);
+            width: 4px;
         }
         .weather-window-body::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.15);
-            border-radius: 3px;
+            border-radius: 2px;
         }
 
-        /* KPI Metrics Grid */
+        /* Compact 2x2 Metric Cards */
         .window-metrics-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-        }
-
-        @media (max-width: 580px) {
-            .window-metrics-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
         }
 
         .metric-card {
             background: rgba(30, 41, 59, 0.6);
             border: 1px solid var(--panel-border);
-            padding: 12px;
-            border-radius: 12px;
+            padding: 6px 8px;
+            border-radius: 8px;
             text-align: center;
         }
 
         .metric-card h4 {
             color: var(--text-sub);
-            font-size: 0.72rem;
-            margin-bottom: 4px;
+            font-size: 0.65rem;
+            margin-bottom: 2px;
         }
 
         .metric-value {
-            font-size: 1.4rem;
+            font-size: 1.05rem;
             font-weight: 800;
         }
 
         .metric-value.max { color: var(--accent-max); }
         .metric-value.min { color: var(--accent-min); }
         .metric-value.diff { color: var(--gold); }
-        .metric-value.city { color: var(--primary); font-size: 1.2rem; }
+        .metric-value.city { color: var(--primary); font-size: 0.95rem; }
 
-        /* Chart Card */
+        /* Compact Chart Box (Reduced by 50%) */
         .chart-box {
             background: rgba(30, 41, 59, 0.5);
             border: 1px solid var(--panel-border);
-            border-radius: 14px;
-            padding: 15px;
+            border-radius: 10px;
+            padding: 8px 10px;
         }
 
         .chart-box h3 {
-            font-size: 0.9rem;
+            font-size: 0.78rem;
             color: #e2e8f0;
-            margin-bottom: 12px;
+            margin-bottom: 6px;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
-        /* Table Card */
+        /* Compact Table Box (Reduced by 50%) */
         .table-box {
             background: rgba(30, 41, 59, 0.5);
             border: 1px solid var(--panel-border);
-            border-radius: 14px;
-            padding: 15px;
+            border-radius: 10px;
+            padding: 8px;
             overflow-x: auto;
         }
 
         .table-box h3 {
-            font-size: 0.9rem;
+            font-size: 0.78rem;
             color: #e2e8f0;
-            margin-bottom: 12px;
+            margin-bottom: 6px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.85rem;
+            font-size: 0.72rem;
         }
 
         th, td {
-            padding: 9px 12px;
+            padding: 5px 6px;
             text-align: center;
         }
 
@@ -487,11 +503,9 @@
 
         .diff-badge {
             display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            padding: 2px 8px;
-            border-radius: 20px;
-            font-size: 0.78rem;
+            padding: 1px 5px;
+            border-radius: 10px;
+            font-size: 0.65rem;
             font-weight: 700;
             background: rgba(251, 191, 36, 0.15);
             color: #fbbf24;
@@ -500,47 +514,77 @@
 
         .status-badge {
             display: inline-block;
-            padding: 2px 8px;
-            border-radius: 20px;
-            font-size: 0.75rem;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 0.65rem;
             font-weight: 700;
         }
-        .status-badge.hot { background: rgba(239, 68, 68, 0.18); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
-        .status-badge.comfy { background: rgba(34, 197, 94, 0.18); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.4); }
-        .status-badge.cool { background: rgba(56, 189, 248, 0.18); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.4); }
+        .status-badge.hot { background: rgba(239, 68, 68, 0.18); color: #fca5a5; }
+        .status-badge.comfy { background: rgba(34, 197, 94, 0.18); color: #86efac; }
+        .status-badge.cool { background: rgba(56, 189, 248, 0.18); color: #7dd3fc; }
 
-        /* Leaflet Custom Marker Styling for Cities */
+        /* Dynamic Map Markers */
         .weather-marker-bubble {
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            background: rgba(15, 23, 42, 0.92);
+            padding: 3px 8px;
+            border-radius: 18px;
+            background: rgba(15, 23, 42, 0.94);
             border: 2px solid;
             color: #fff;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
-            font-family: 'Outfit', 'Noto Sans TC', sans-serif;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
             cursor: pointer;
             transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
             white-space: nowrap;
         }
 
         .weather-marker-bubble:hover {
-            transform: scale(1.22);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+            transform: scale(1.2);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.85);
             z-index: 1000 !important;
         }
 
         .marker-name {
-            font-size: 0.78rem;
+            font-size: 0.72rem;
             font-weight: 600;
             color: #e2e8f0;
         }
 
-        .marker-temp {
-            font-size: 0.88rem;
+        .marker-val {
+            font-size: 0.82rem;
             font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        /* Rotating Wind Arrow */
+        .wind-arrow {
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+
+        /* Radar Status Badge */
+        .radar-badge {
+            position: fixed;
+            top: 60px;
+            right: 14px;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #38bdf8;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+        .radar-badge.active {
+            display: flex;
         }
 
         /* Leaflet Dark Popup override */
@@ -548,21 +592,12 @@
             background: rgba(15, 23, 42, 0.95) !important;
             color: #f8fafc !important;
             border: 1px solid rgba(56, 189, 248, 0.3) !important;
-            border-radius: 14px !important;
+            border-radius: 12px !important;
             backdrop-filter: blur(12px) !important;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
         }
-        .leaflet-popup-tip {
-            background: rgba(15, 23, 42, 0.95) !important;
-        }
-        .leaflet-popup-content {
-            margin: 12px 14px !important;
-            line-height: 1.5 !important;
-        }
-        .leaflet-container a.leaflet-popup-close-button {
-            color: #94a3b8 !important;
-            padding: 6px !important;
-        }
+        .leaflet-popup-tip { background: rgba(15, 23, 42, 0.95) !important; }
+        .leaflet-popup-content { margin: 10px 12px !important; line-height: 1.4 !important; }
     </style>
 </head>
 <body>
@@ -572,22 +607,50 @@
 
     <!-- 2. Top-Left Floating Header -->
     <div class="floating-header">
-        <h1>🌦️ 台灣各縣市即時氣象地圖</h1>
-        <div class="status-tag">全台 22 縣市</div>
+        <h1>🌦️ 台灣氣象地圖</h1>
+        <div class="status-tag">22縣市全境即時</div>
     </div>
 
-    <!-- 3. Top-Right Floating Control Panel (Windy-style) -->
+    <!-- 3. Top-Center Interactive Weather Mode Switcher -->
+    <div class="floating-mode-bar">
+        <button class="mode-btn active" id="mode-temp" onclick="setWeatherMode('temp')">
+            <span>🌡️</span><span>氣溫</span>
+        </button>
+        <button class="mode-btn" id="mode-rain" onclick="setWeatherMode('rain')">
+            <span>🌧️</span><span>降雨機率</span>
+        </button>
+        <button class="mode-btn" id="mode-radar" onclick="setWeatherMode('radar')">
+            <span>📡</span><span>即時雷達回波</span>
+        </button>
+        <button class="mode-btn" id="mode-wind" onclick="setWeatherMode('wind')">
+            <span>💨</span><span>風向風速</span>
+        </button>
+        <button class="mode-btn" id="mode-humid" onclick="setWeatherMode('humid')">
+            <span>💧</span><span>溫濕度體感</span>
+        </button>
+        <button class="mode-btn" id="mode-wx" onclick="setWeatherMode('wx')">
+            <span>⛅</span><span>天氣現象</span>
+        </button>
+    </div>
+
+    <!-- Radar Live Status Tag -->
+    <div class="radar-badge" id="radarBadge">
+        <span>📡 CWA/RainViewer 雷達回波圖層已開啟</span>
+    </div>
+
+    <!-- 4. Top-Right Floating Control Panel -->
     <div class="floating-control-panel">
-        <button class="btn-open-window" onclick="toggleChartWindow()">
-            <span>📈</span>
-            <span>各縣市走勢報表</span>
+        <button class="panel-action-btn" onclick="toggleChartWindow()" style="background: linear-gradient(135deg, #0284c7, #2563eb); border:none;">
+            <span>📈</span><span>縣市走勢報表 (小窗)</span>
         </button>
 
         <div>
-            <div class="panel-section-title">底圖樣式</div>
-            <div class="basemap-toggle">
-                <button id="btn-dark" class="basemap-btn active" onclick="switchBasemap('dark')">深色底圖</button>
-                <button id="btn-street" class="basemap-btn" onclick="switchBasemap('street')">街道圖</button>
+            <div class="panel-section-title">底圖樣式 (暗黑修復)</div>
+            <div class="basemap-grid">
+                <button id="bm-esridark" class="basemap-btn active" onclick="switchBasemap('esridark')">🌑 極客深色</button>
+                <button id="bm-cartodark" class="basemap-btn" onclick="switchBasemap('cartodark')">🌌 沉浸夜空</button>
+                <button id="bm-satellite" class="basemap-btn" onclick="switchBasemap('satellite')">🛰️ 衛星影像</button>
+                <button id="bm-street" class="basemap-btn" onclick="switchBasemap('street')">🗺️ 街道圖</button>
             </div>
         </div>
 
@@ -596,11 +659,11 @@
         </button>
 
         <button class="panel-action-btn" onclick="syncCwaData()">
-            <span id="sync-spinner">🔄</span><span>同步 CWA 氣象</span>
+            <span id="sync-spinner">🔄</span><span>同步 CWA 最新數據</span>
         </button>
     </div>
 
-    <!-- 4. Bottom-Center Quick City Selector Chips -->
+    <!-- 5. Bottom-Center Quick City Selector Chips -->
     <div class="floating-city-bar">
         <button class="city-chip active" onclick="selectCity('全台')">📍 全台總覽</button>
         {% for c in cities %}
@@ -608,14 +671,14 @@
         {% endfor %}
     </div>
 
-    <!-- 5. Bottom-Right Temperature Scale Bar -->
-    <div class="temp-legend-bar">
+    <!-- 6. Dynamic Bottom-Right Scale Legend Bar -->
+    <div class="temp-legend-bar" id="legendContainer">
         <div class="legend-ticks">
-            <span>氣溫色階</span>
-            <span>°C</span>
+            <span id="legendTitle">氣溫色階</span>
+            <span id="legendUnit">°C</span>
         </div>
-        <div class="legend-gradient"></div>
-        <div class="legend-ticks">
+        <div class="legend-gradient" id="legendGradient"></div>
+        <div class="legend-ticks" id="legendLabels">
             <span>15°</span>
             <span>20°</span>
             <span>24°</span>
@@ -625,66 +688,68 @@
         </div>
     </div>
 
-    <!-- 6. Floating Analytics / Chart & Table Window (Modal) -->
+    <!-- 7. Compact 50%-Sized Analytics & Forecast Window -->
     <div id="chart-window" class="weather-window">
         <!-- Window Header -->
-        <div class="weather-window-header" id="windowHeader">
+        <div class="weather-window-header">
             <h2>
                 <span>📊</span>
-                <span id="windowLocationTitle">{{ selected_location }} 氣溫走勢與預報</span>
+                <span id="windowLocationTitle">{{ selected_location }} 預報走勢</span>
             </h2>
             <div class="window-controls">
-                <select id="modalLocationSelect" onchange="selectCity(this.value)" style="background: rgba(15,23,42,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.25); padding: 4px 10px; border-radius: 8px; font-size: 0.85rem; font-weight:600; cursor: pointer; outline:none;">
+                <select id="modalLocationSelect" onchange="selectCity(this.value)" style="background: rgba(15,23,42,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.25); padding: 2px 6px; border-radius: 6px; font-size: 0.75rem; font-weight:600; cursor: pointer; outline:none;">
                     {% for c in cities %}
                         <option value="{{ c }}" {% if c == selected_location %}selected{% endif %}>{{ c }}</option>
                     {% endfor %}
                 </select>
-                <button class="window-ctrl-btn close" onclick="closeChartWindow()" title="關閉視窗">✕</button>
+                <button class="window-ctrl-btn" onclick="closeChartWindow()" title="關閉視窗">✕</button>
             </div>
         </div>
 
-        <!-- Window Body -->
+        <!-- Compact Window Body -->
         <div class="weather-window-body">
-            <!-- Top Metric Cards -->
+            <!-- 2x2 Metric Cards -->
             <div class="window-metrics-grid">
                 <div class="metric-card">
-                    <h4>目前縣市</h4>
+                    <h4>目前縣市 / 區域</h4>
                     <div class="metric-value city" id="kpi-location">{{ selected_location }}</div>
                 </div>
                 <div class="metric-card">
-                    <h4>最高溫 MaxT</h4>
-                    <div class="metric-value max" id="kpi-maxt">--</div>
+                    <h4>天氣狀況 / 舒適度</h4>
+                    <div class="metric-value diff" id="kpi-wx" style="font-size:0.88rem;">--</div>
                 </div>
                 <div class="metric-card">
-                    <h4>最低溫 MinT</h4>
-                    <div class="metric-value min" id="kpi-mint">--</div>
+                    <h4>最高溫 / 最低溫</h4>
+                    <div class="metric-value" style="font-size:0.9rem;">
+                        <span class="max" id="kpi-maxt">--</span> / <span class="min" id="kpi-mint">--</span>
+                    </div>
                 </div>
                 <div class="metric-card">
-                    <h4>預測溫差</h4>
-                    <div class="metric-value diff" id="kpi-diff">--</div>
+                    <h4>降雨機率 / 風速</h4>
+                    <div class="metric-value" style="font-size:0.85rem; color:#38bdf8;" id="kpi-pop-wind">--</div>
                 </div>
             </div>
 
-            <!-- Chart.js Box -->
+            <!-- Compact 50%-sized Chart.js Box -->
             <div class="chart-box">
                 <h3>
-                    <span>📈 一週氣溫高低走勢曲線</span>
-                    <span style="font-size: 0.75rem; color: var(--text-sub);">單位: °C</span>
+                    <span>📈 氣溫走勢曲線</span>
+                    <span style="font-size: 0.68rem; color: var(--text-sub);">單位: °C</span>
                 </h3>
-                <canvas id="tempChart" height="200"></canvas>
+                <canvas id="tempChart" height="90"></canvas>
             </div>
 
-            <!-- Data Table Box -->
+            <!-- Compact 50%-sized Data Table Box -->
             <div class="table-box">
-                <h3 id="tableTitle">📋 預報數據明細與體感指標</h3>
+                <h3>📋 預報明細與體感指標</h3>
                 <table>
                     <thead>
                         <tr>
-                            <th>預報日期</th>
-                            <th>最低溫 (MinT)</th>
-                            <th>最高溫 (MaxT)</th>
-                            <th>日預測溫差</th>
-                            <th>體感舒適度</th>
+                            <th>日期</th>
+                            <th>氣溫</th>
+                            <th>天氣</th>
+                            <th>降雨</th>
+                            <th>舒適度</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
@@ -701,6 +766,7 @@
         const allRecords = {{ all_records|tojson }};
         const allCities = {{ cities|tojson }};
         let currentSelectedLocation = "{{ selected_location }}";
+        let currentMode = "temp"; // 'temp', 'rain', 'radar', 'wind', 'humid', 'wx'
 
         // Precise geographic coordinates for all 22 counties/cities of Taiwan
         const cityCoords = {
@@ -740,59 +806,86 @@
             zoomControl: false
         });
 
-        // Add Zoom Control to Bottom Left to prevent overlap
+        // Add Zoom Control to Bottom Left
         L.control.zoom({ position: 'topleft' }).addTo(map);
 
-        // Tile Layers
-        const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        // ── Bulletproof Base Map Layers ─────────────────────────
+        // 1. ESRI World Dark Gray Base (Ultra-reliable dark basemap)
+        const esriDarkTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri, DeLorme, NAVTEQ',
+            maxZoom: 16
+        });
+
+        // 2. CARTO Dark Matter (Clean dark vector-styled)
+        const cartoDarkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
             subdomains: 'abcd',
             maxZoom: 19
         });
 
+        // 3. ESRI Satellite Imagery
+        const satelliteTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri, Maxar, Earthstar Geographics',
+            maxZoom: 18
+        });
+
+        // 4. OpenStreetMap Standard
         const streetTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            attribution: '&copy; OpenStreetMap contributors',
             maxZoom: 19
         });
 
-        // Default Basemap: Dark
-        darkTileLayer.addTo(map);
-        let activeBasemap = 'dark';
+        // Set default basemap: ESRI Dark Gray Base (Fixed dark theme!)
+        esriDarkTileLayer.addTo(map);
+        let currentBasemap = 'esridark';
+
+        const basemapLayers = {
+            'esridark': esriDarkTileLayer,
+            'cartodark': cartoDarkTileLayer,
+            'satellite': satelliteTileLayer,
+            'street': streetTileLayer
+        };
 
         function switchBasemap(type) {
-            if(type === 'dark' && activeBasemap !== 'dark') {
-                map.removeLayer(streetTileLayer);
-                darkTileLayer.addTo(map);
-                activeBasemap = 'dark';
-                document.getElementById('btn-dark').classList.add('active');
-                document.getElementById('btn-street').classList.remove('active');
-            } else if(type === 'street' && activeBasemap !== 'street') {
-                map.removeLayer(darkTileLayer);
-                streetTileLayer.addTo(map);
-                activeBasemap = 'street';
-                document.getElementById('btn-street').classList.add('active');
-                document.getElementById('btn-dark').classList.remove('active');
-            }
+            if (currentBasemap === type) return;
+            map.removeLayer(basemapLayers[currentBasemap]);
+            basemapLayers[type].addTo(map);
+            currentBasemap = type;
+
+            document.querySelectorAll('.basemap-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById('bm-' + type);
+            if (activeBtn) activeBtn.classList.add('active');
         }
 
         function resetMapCenter() {
-            map.flyTo([23.85, 120.95], 7.8, { duration: 1.2 });
+            map.flyTo([23.85, 120.95], 7.8, { duration: 1.0 });
         }
 
-        // Color helper according to temperature
-        function getTempColor(avgTemp) {
-            if (avgTemp >= 30) return '#ef4444'; // Red
-            if (avgTemp >= 26) return '#f97316'; // Orange
-            if (avgTemp >= 22) return '#22c55e'; // Green
-            if (avgTemp >= 18) return '#06b6d4'; // Cyan
-            return '#3b82f6';                    // Blue
+        // ── 2. Live Radar Tile Layer ────────────────────────────
+        let radarTileLayer = null;
+
+        async function initRadarLayer() {
+            try {
+                const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+                const data = await res.json();
+                const host = data.host;
+                const pastFrames = data.radar.past;
+                if (pastFrames && pastFrames.length > 0) {
+                    const latest = pastFrames[pastFrames.length - 1];
+                    const radarUrl = `${host}${latest.path}/256/{z}/{x}/{y}/2/1_1.png`;
+                    radarTileLayer = L.tileLayer(radarUrl, {
+                        opacity: 0.75,
+                        zIndex: 500,
+                        attribution: '&copy; RainViewer Live Radar'
+                    });
+                }
+            } catch (e) {
+                console.warn("Could not load live radar tiles:", e);
+            }
         }
+        initRadarLayer();
 
-        // 2. Render Custom Markers for ALL 22 CITIES
-        const markerGroup = L.layerGroup().addTo(map);
-        const markersByCity = {};
-
-        // Find latest forecast record per city
+        // ── 3. Find Latest Record per City ──────────────────────
         const latestByCity = {};
         allRecords.forEach(r => {
             if (!latestByCity[r.locationName]) {
@@ -800,91 +893,248 @@
             }
         });
 
-        Object.keys(cityCoords).forEach(cityName => {
-            const coords = cityCoords[cityName];
-            const data = latestByCity[cityName];
-            let avgTemp = 24;
-            let tempDisplay = '--°C';
-            let mint = '--';
-            let maxt = '--';
-            let region = '';
+        // ── 4. Weather Markers Rendering according to Active Mode ──
+        const markerGroup = L.layerGroup().addTo(map);
+        const markersByCity = {};
 
-            if (data) {
-                avgTemp = (data.mint + data.maxt) / 2;
-                tempDisplay = Math.round(avgTemp) + '°C';
-                mint = data.mint;
-                maxt = data.maxt;
-                region = data.regionName;
+        function getMarkerContent(cityName, mode) {
+            const data = latestByCity[cityName] || {};
+            const avgTemp = data.mint && data.maxt ? (data.mint + data.maxt) / 2 : 25;
+            const shortName = cityName.replace('市', '').replace('縣', '');
+
+            switch (mode) {
+                case 'temp': {
+                    let color = '#38bdf8';
+                    if (avgTemp >= 32) color = '#ef4444';
+                    else if (avgTemp >= 28) color = '#f97316';
+                    else if (avgTemp >= 24) color = '#22c55e';
+                    else if (avgTemp >= 20) color = '#06b6d4';
+                    return {
+                        html: `<span class="marker-name">${shortName}</span><span class="marker-val" style="color:${color};">🌡️ ${Math.round(avgTemp)}°C</span>`,
+                        color: color
+                    };
+                }
+                case 'rain': {
+                    const pop = parseInt(data.pop || '10', 10);
+                    let color = '#38bdf8';
+                    if (pop >= 70) color = '#818cf8';
+                    else if (pop >= 40) color = '#06b6d4';
+                    else color = '#22c55e';
+                    return {
+                        html: `<span class="marker-name">${shortName}</span><span class="marker-val" style="color:${color};">🌧️ ${pop}%</span>`,
+                        color: color
+                    };
+                }
+                case 'radar': {
+                    const avgT = Math.round(avgTemp);
+                    return {
+                        html: `<span class="marker-name">${shortName}</span><span class="marker-val" style="color:#38bdf8;">📡 ${avgT}°</span>`,
+                        color: '#38bdf8'
+                    };
+                }
+                case 'wind': {
+                    const speed = data.windSpeed !== undefined ? Number(data.windSpeed).toFixed(1) : '2.0';
+                    const dir = data.windDirection !== undefined ? Number(data.windDirection) : 45;
+                    let color = '#22c55e';
+                    if (parseFloat(speed) >= 5) color = '#ef4444';
+                    else if (parseFloat(speed) >= 3) color = '#f59e0b';
+                    return {
+                        html: `<span class="marker-name">${shortName}</span><span class="marker-val" style="color:${color};"><span class="wind-arrow" style="transform:rotate(${dir}deg);">↑</span> ${speed}m/s</span>`,
+                        color: color
+                    };
+                }
+                case 'humid': {
+                    const humid = data.humidity !== undefined ? Math.round(data.humidity) : 75;
+                    const ci = data.ci || '舒適';
+                    let color = '#38bdf8';
+                    if (humid >= 80) color = '#6366f1';
+                    else if (humid >= 65) color = '#06b6d4';
+                    return {
+                        html: `<span class="marker-name">${shortName}</span><span class="marker-val" style="color:${color};">💧 ${humid}%</span>`,
+                        color: color
+                    };
+                }
+                case 'wx': {
+                    const wx = data.wx || '多雲';
+                    let icon = '⛅';
+                    let color = '#38bdf8';
+                    if (wx.includes('晴')) { icon = '☀️'; color = '#fbbf24'; }
+                    if (wx.includes('雨')) { icon = '🌧️'; color = '#60a5fa'; }
+                    if (wx.includes('雷')) { icon = '⛈️'; color = '#c084fc'; }
+                    const shortWx = wx.length > 3 ? wx.substring(0, 3) : wx;
+                    return {
+                        html: `<span class="marker-name">${shortName}</span><span class="marker-val" style="color:${color};">${icon} ${shortWx}</span>`,
+                        color: color
+                    };
+                }
+                default:
+                    return {
+                        html: `<span class="marker-name">${shortName}</span><span class="marker-val">🌡️ ${Math.round(avgTemp)}°C</span>`,
+                        color: '#38bdf8'
+                    };
+            }
+        }
+
+        function renderMarkers() {
+            markerGroup.clearLayers();
+
+            Object.keys(cityCoords).forEach(cityName => {
+                const coords = cityCoords[cityName];
+                const contentInfo = getMarkerContent(cityName, currentMode);
+                const data = latestByCity[cityName] || {};
+
+                const iconHtml = `
+                    <div class="weather-marker-bubble" style="border-color: ${contentInfo.color};">
+                        ${contentInfo.html}
+                    </div>
+                `;
+
+                const customIcon = L.divIcon({
+                    html: iconHtml,
+                    className: '',
+                    iconSize: [95, 28],
+                    iconAnchor: [47, 14]
+                });
+
+                const marker = L.marker(coords, { icon: customIcon }).addTo(markerGroup);
+                markersByCity[cityName] = marker;
+
+                // Rich Popup Information
+                const wx = data.wx || '多雲';
+                const pop = data.pop ? data.pop + '%' : '10%';
+                const mint = data.mint !== undefined ? data.mint + '°C' : '--';
+                const maxt = data.maxt !== undefined ? data.maxt + '°C' : '--';
+                const wind = data.windSpeed !== undefined ? data.windSpeed + ' m/s' : '--';
+                const humid = data.humidity !== undefined ? data.humidity + '%' : '--';
+                const ci = data.ci || '舒適';
+
+                const popupHtml = `
+                    <div style="font-family:'Noto Sans TC',sans-serif; text-align:center; min-width: 160px;">
+                        <div style="font-size:1.0rem; font-weight:800; color:#38bdf8; margin-bottom:2px;">${cityName}</div>
+                        <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:6px;">${wx} ｜ 體感：${ci}</div>
+                        <div style="font-size:0.8rem; color:#cbd5e1; margin-bottom:4px;">
+                            低: <b style="color:#38bdf8">${mint}</b> ｜ 高: <b style="color:#ef4444">${maxt}</b>
+                        </div>
+                        <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px;">
+                            🌧️ 降雨: <b>${pop}</b> ｜ 💨 風速: <b>${wind}</b> ｜ 💧 濕度: <b>${humid}</b>
+                        </div>
+                        <button onclick="selectCity('${cityName}'); openChartWindow();" style="background:linear-gradient(135deg, #0284c7, #2563eb); color:#fff; border:none; padding:5px 10px; border-radius:6px; font-size:0.75rem; font-weight:700; cursor:pointer; width:100%;">
+                            📊 查看 ${cityName} 報表走勢
+                        </button>
+                    </div>
+                `;
+                marker.bindPopup(popupHtml);
+
+                marker.on('click', () => {
+                    selectCity(cityName);
+                    openChartWindow();
+                });
+            });
+        }
+
+        // ── 5. Mode Switcher Handler ────────────────────────────
+        function setWeatherMode(mode) {
+            currentMode = mode;
+
+            // Highlight mode buttons
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById('mode-' + mode);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            // Radar layer toggle
+            const radarBadge = document.getElementById('radarBadge');
+            if (mode === 'radar') {
+                if (radarTileLayer && !map.hasLayer(radarTileLayer)) {
+                    radarTileLayer.addTo(map);
+                }
+                radarBadge.classList.add('active');
+            } else {
+                if (radarTileLayer && map.hasLayer(radarTileLayer)) {
+                    map.removeLayer(radarTileLayer);
+                }
+                radarBadge.classList.remove('active');
             }
 
-            const color = getTempColor(avgTemp);
+            // Update Legend
+            updateLegend(mode);
 
-            // Custom HTML Marker Icon
-            const iconHtml = `
-                <div class="weather-marker-bubble" style="border-color: ${color};">
-                    <span class="marker-name">${cityName.replace('市', '').replace('縣', '')}</span>
-                    <span class="marker-temp" style="color: ${color};">${tempDisplay}</span>
-                </div>
-            `;
+            // Re-render markers
+            renderMarkers();
+        }
 
-            const customIcon = L.divIcon({
-                html: iconHtml,
-                className: '',
-                iconSize: [85, 32],
-                iconAnchor: [42, 16]
-            });
+        function updateLegend(mode) {
+            const title = document.getElementById('legendTitle');
+            const unit = document.getElementById('legendUnit');
+            const gradient = document.getElementById('legendGradient');
+            const labels = document.getElementById('legendLabels');
 
-            const marker = L.marker(coords, { icon: customIcon }).addTo(markerGroup);
-            markersByCity[cityName] = marker;
+            switch (mode) {
+                case 'temp':
+                    title.innerText = '氣溫色階';
+                    unit.innerText = '°C';
+                    gradient.style.background = 'linear-gradient(to right, #2c7bb6, #abd9e9, #22c55e, #fdae61, #ef4444)';
+                    labels.innerHTML = '<span>15°</span><span>20°</span><span>24°</span><span>28°</span><span>32°</span><span>36°+</span>';
+                    break;
+                case 'rain':
+                    title.innerText = '降雨機率';
+                    unit.innerText = '%';
+                    gradient.style.background = 'linear-gradient(to right, #e0f2fe, #7dd3fc, #38bdf8, #0284c7, #4338ca)';
+                    labels.innerHTML = '<span>0%</span><span>20%</span><span>40%</span><span>60%</span><span>80%</span><span>100%</span>';
+                    break;
+                case 'radar':
+                    title.innerText = '雷達回波強度';
+                    unit.innerText = 'dBZ';
+                    gradient.style.background = 'linear-gradient(to right, #00ffff, #0000ff, #00ff00, #ffff00, #ff0000, #ff00ff)';
+                    labels.innerHTML = '<span>5</span><span>15</span><span>25</span><span>35</span><span>45</span><span>55+</span>';
+                    break;
+                case 'wind':
+                    title.innerText = '風速大小';
+                    unit.innerText = 'm/s';
+                    gradient.style.background = 'linear-gradient(to right, #22c55e, #10b981, #f59e0b, #f97316, #ef4444)';
+                    labels.innerHTML = '<span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10+</span>';
+                    break;
+                case 'humid':
+                    title.innerText = '相對濕度';
+                    unit.innerText = '%';
+                    gradient.style.background = 'linear-gradient(to right, #fef08a, #86efac, #38bdf8, #6366f1)';
+                    labels.innerHTML = '<span>40%</span><span>55%</span><span>70%</span><span>85%</span><span>100%</span>';
+                    break;
+                case 'wx':
+                    title.innerText = '天氣型態';
+                    unit.innerText = '圖示';
+                    gradient.style.background = 'linear-gradient(to right, #fbbf24, #94a3b8, #60a5fa, #818cf8)';
+                    labels.innerHTML = '<span>晴天</span><span>多雲</span><span>短暫雨</span><span>雷雨</span>';
+                    break;
+            }
+        }
 
-            // Popup
-            const popupHtml = `
-                <div style="font-family:'Noto Sans TC',sans-serif; text-align:center; min-width: 150px;">
-                    <div style="font-size:1.05rem; font-weight:700; color:#38bdf8; margin-bottom:2px;">${cityName}</div>
-                    <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px;">所屬分區：${region}</div>
-                    <div style="font-size:0.85rem; color:#cbd5e1; margin-bottom:10px;">
-                        最低: <b style="color:#3b82f6">${mint}°C</b> ｜ 
-                        最高: <b style="color:#ef4444">${maxt}°C</b>
-                    </div>
-                    <button onclick="selectCity('${cityName}'); openChartWindow();" style="background:#0284c7; color:#fff; border:none; padding:6px 12px; border-radius:6px; font-size:0.8rem; font-weight:700; cursor:pointer; width:100%; transition: background 0.2s;">
-                        📊 查看 ${cityName} 預報報表
-                    </button>
-                </div>
-            `;
-            marker.bindPopup(popupHtml);
-
-            // Click marker to select and open chart window
-            marker.on('click', () => {
-                selectCity(cityName);
-                openChartWindow();
-            });
-        });
-
-        // 3. Chart.js Instance
+        // ── 6. Compact Chart.js Instance & Table Update ─────────
         let tempChart = null;
 
         function updateChartAndTable(cityName) {
             const cityData = allRecords.filter(r => r.locationName === cityName);
-            
-            // Update Title
-            document.getElementById('windowLocationTitle').innerText = `${cityName} 預報走勢與明細`;
-            document.getElementById('kpi-location').innerText = cityName;
-            document.getElementById('modalLocationSelect').value = cityName;
 
-            // Update KPI Cards
+            // Update Titles & Selectors
+            document.getElementById('windowLocationTitle').innerText = `${cityName} 預報走勢`;
+            document.getElementById('kpi-location').innerText = cityName;
+            const selectEl = document.getElementById('modalLocationSelect');
+            if (selectEl) selectEl.value = cityName;
+
             if (cityData.length > 0) {
                 const first = cityData[0];
-                document.getElementById('kpi-maxt').innerText = `${first.maxt}°C`;
-                document.getElementById('kpi-mint').innerText = `${first.mint}°C`;
-                document.getElementById('kpi-diff').innerText = `${(first.maxt - first.mint).toFixed(1)}°C`;
+                document.getElementById('kpi-maxt').innerText = `${first.maxt}°`;
+                document.getElementById('kpi-mint').innerText = `${first.mint}°`;
+                document.getElementById('kpi-wx').innerText = `${first.wx || '多雲'} · ${first.ci || '舒適'}`;
+                document.getElementById('kpi-pop-wind').innerText = `🌧️ ${first.pop || '0'}% ｜ 💨 ${first.windSpeed || '2.2'}m/s`;
             } else {
                 document.getElementById('kpi-maxt').innerText = '--';
                 document.getElementById('kpi-mint').innerText = '--';
-                document.getElementById('kpi-diff').innerText = '--';
+                document.getElementById('kpi-wx').innerText = '--';
+                document.getElementById('kpi-pop-wind').innerText = '--';
             }
 
-            // Update Chart.js
-            const labels = cityData.map(r => r.dataDate);
+            // Compact Chart Data
+            const labels = cityData.map(r => r.dataDate.substring(5)); // Format as MM-DD
             const minTemps = cityData.map(r => r.mint);
             const maxTemps = cityData.map(r => r.maxt);
 
@@ -901,37 +1151,34 @@
                         labels: labels,
                         datasets: [
                             {
-                                label: '最高氣溫 (MaxT)',
+                                label: '最高溫',
                                 data: maxTemps,
                                 borderColor: '#ef4444',
-                                backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                                borderWidth: 3,
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                borderWidth: 2,
                                 tension: 0.35,
                                 fill: true,
-                                pointRadius: 5,
-                                pointHoverRadius: 8,
-                                pointBackgroundColor: '#ef4444',
-                                pointBorderColor: '#ffffff',
-                                pointBorderWidth: 2
+                                pointRadius: 3,
+                                pointHoverRadius: 6,
+                                pointBackgroundColor: '#ef4444'
                             },
                             {
-                                label: '最低氣溫 (MinT)',
+                                label: '最低溫',
                                 data: minTemps,
-                                borderColor: '#3b82f6',
-                                backgroundColor: 'rgba(59, 130, 246, 0.12)',
-                                borderWidth: 3,
+                                borderColor: '#38bdf8',
+                                backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                                borderWidth: 2,
                                 tension: 0.35,
                                 fill: true,
-                                pointRadius: 5,
-                                pointHoverRadius: 8,
-                                pointBackgroundColor: '#3b82f6',
-                                pointBorderColor: '#ffffff',
-                                pointBorderWidth: 2
+                                pointRadius: 3,
+                                pointHoverRadius: 6,
+                                pointBackgroundColor: '#38bdf8'
                             }
                         ]
                     },
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false,
                         interaction: {
                             mode: 'index',
                             intersect: false
@@ -939,60 +1186,45 @@
                         plugins: {
                             legend: {
                                 labels: {
-                                    color: '#f8fafc',
-                                    font: { family: 'Noto Sans TC', size: 12, weight: '600' },
-                                    boxWidth: 14,
-                                    padding: 10
+                                    color: '#cbd5e1',
+                                    font: { family: 'Outfit', size: 10, weight: '600' },
+                                    boxWidth: 10,
+                                    padding: 6
                                 }
                             },
                             tooltip: {
                                 backgroundColor: 'rgba(15, 23, 42, 0.94)',
-                                titleColor: '#38bdf8',
-                                titleFont: { family: 'Noto Sans TC', size: 12, weight: 'bold' },
-                                bodyColor: '#f8fafc',
-                                borderColor: 'rgba(56, 189, 248, 0.35)',
-                                borderWidth: 1,
-                                padding: 10,
-                                cornerRadius: 8,
-                                callbacks: {
-                                    title: function(items) { return '📅 ' + items[0].label; },
-                                    label: function(c) { return ` ${c.dataset.label}: ${c.parsed.y} °C`; },
-                                    afterBody: function(items) {
-                                        if (items.length >= 2) {
-                                            const diff = Math.abs(items[0].parsed.y - items[1].parsed.y).toFixed(1);
-                                            return ['📊 日溫差: ' + diff + ' °C'];
-                                        }
-                                        return [];
-                                    }
-                                }
+                                titleFont: { size: 11 },
+                                bodyFont: { size: 10 },
+                                padding: 6,
+                                cornerRadius: 6
                             }
                         },
                         scales: {
                             x: {
-                                ticks: { color: '#94a3b8', font: { family: 'Outfit, Noto Sans TC' } },
-                                grid: { color: 'rgba(255,255,255,0.05)' }
+                                ticks: { color: '#94a3b8', font: { size: 9 } },
+                                grid: { color: 'rgba(255,255,255,0.04)' }
                             },
                             y: {
                                 ticks: {
                                     color: '#94a3b8',
-                                    font: { family: 'Outfit, Noto Sans TC' },
-                                    callback: function(v) { return v + '°C'; }
+                                    font: { size: 9 },
+                                    callback: function(v) { return v + '°'; }
                                 },
-                                grid: { color: 'rgba(255,255,255,0.05)' }
+                                grid: { color: 'rgba(255,255,255,0.04)' }
                             }
                         }
                     }
                 });
             }
 
-            // Update Table
+            // Compact Table Data
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
             if (cityData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5">暫無此縣市資料</td></tr>';
             } else {
                 cityData.forEach(rec => {
-                    const diff = (rec.maxt - rec.mint).toFixed(1);
                     const avg = (rec.maxt + rec.mint) / 2;
                     let badgeHtml = '<span class="status-badge comfy">舒適</span>';
                     if (avg >= 28) badgeHtml = '<span class="status-badge hot">炎熱</span>';
@@ -1000,10 +1232,10 @@
 
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td><strong>${rec.dataDate}</strong></td>
-                        <td class="temp-low">❄️ ${rec.mint} °C</td>
-                        <td class="temp-high">🔥 ${rec.maxt} °C</td>
-                        <td><span class="diff-badge">▲ ${diff} °C</span></td>
+                        <td><strong>${rec.dataDate.substring(5)}</strong></td>
+                        <td><span class="temp-low">${rec.mint}°</span> / <span class="temp-high">${rec.maxt}°</span></td>
+                        <td>${rec.wx || '多雲'}</td>
+                        <td style="color:#38bdf8;">🌧️ ${rec.pop || '0'}%</td>
                         <td>${badgeHtml}</td>
                     `;
                     tbody.appendChild(row);
@@ -1011,7 +1243,7 @@
             }
         }
 
-        // 4. City Selection Handling
+        // ── 7. City Selection ───────────────────────────────────
         function selectCity(cityName) {
             currentSelectedLocation = cityName;
 
@@ -1029,7 +1261,7 @@
             } else {
                 const coords = cityCoords[cityName];
                 if (coords) {
-                    map.flyTo(coords, 10, { duration: 1.0 });
+                    map.flyTo(coords, 10, { duration: 0.9 });
                     if (markersByCity[cityName]) {
                         markersByCity[cityName].openPopup();
                     }
@@ -1038,7 +1270,7 @@
             }
         }
 
-        // 5. Window Toggle Controls
+        // ── 8. Window Controls ──────────────────────────────────
         const chartWindow = document.getElementById('chart-window');
 
         function toggleChartWindow() {
@@ -1062,7 +1294,7 @@
             chartWindow.classList.add('hidden');
         }
 
-        // 6. CWA Data Sync
+        // ── 9. CWA Data Sync ────────────────────────────────────
         async function syncCwaData() {
             const spinner = document.getElementById('sync-spinner');
             spinner.innerText = "⏳";
@@ -1070,7 +1302,7 @@
                 const res = await fetch('/api/sync');
                 const data = await res.json();
                 if (data.status === "success") {
-                    alert(`✅ 氣象資料同步成功！已更新 ${data.count} 筆各縣市資料。`);
+                    alert(`✅ 氣象與觀測資料同步成功！已更新 ${data.count} 筆各縣市資料。`);
                     window.location.reload();
                 } else {
                     alert("❌ 同步失敗: " + data.message);
@@ -1082,7 +1314,8 @@
             }
         }
 
-        // Initial setup on page load
+        // Initial Setup
+        renderMarkers();
         updateChartAndTable(currentSelectedLocation);
     </script>
 </body>

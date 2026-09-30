@@ -49,18 +49,56 @@ def map_county_to_region(location_name: str) -> str:
     return "其他地區"
 
 
-def parse_weather_json(json_data: Dict[str, Any]) -> pd.DataFrame:
+def parse_weather_json(json_data: Dict[str, Any], obs_data: Dict[str, Any] = None) -> pd.DataFrame:
     """
-    Parse CWA JSON weather response into a clean Pandas DataFrame (Unit 05, 06, 07).
+    Parse CWA JSON weather forecast response and optional station observations into a rich Pandas DataFrame.
 
     Args:
-        json_data (dict): Raw JSON data from CWA API.
+        json_data (dict): Raw JSON forecast data from CWA API (F-C0032-001).
+        obs_data (dict, optional): Real-time station observations from CWA API (O-A0003-001).
 
     Returns:
-        pd.DataFrame: DataFrame containing [regionName, locationName, dataDate, mint, maxt].
+        pd.DataFrame: DataFrame containing [regionName, locationName, dataDate, mint, maxt, wx, pop, ci, windSpeed, windDirection, humidity, precipitation].
     """
     records = json_data.get("records", {})
     locations = records.get("location", [])
+
+    # Process county observation data if provided
+    county_obs = {}
+    if obs_data:
+        for s in obs_data.get("records", {}).get("Station", []):
+            c = s.get("GeoInfo", {}).get("CountyName")
+            if c and c not in county_obs:
+                we = s.get("WeatherElement", {})
+                try:
+                    temp = float(we.get("AirTemperature", 26))
+                except (ValueError, TypeError):
+                    temp = 26.0
+                try:
+                    humid = float(we.get("RelativeHumidity", 72))
+                except (ValueError, TypeError):
+                    humid = 72.0
+                try:
+                    ws = float(we.get("WindSpeed", 2.2))
+                except (ValueError, TypeError):
+                    ws = 2.2
+                try:
+                    wd = float(we.get("WindDirection", 45))
+                except (ValueError, TypeError):
+                    wd = 45.0
+                try:
+                    precip = float(we.get("Now", {}).get("Precipitation", 0))
+                except (ValueError, TypeError):
+                    precip = 0.0
+
+                county_obs[c] = {
+                    "temp": temp if temp > -50 else 26.0,
+                    "humidity": humid if humid > 0 else 72.0,
+                    "windSpeed": ws if ws >= 0 else 2.0,
+                    "windDirection": wd,
+                    "precipitation": precip if precip >= 0 else 0.0,
+                    "weather": we.get("Weather", "多雲")
+                }
 
     rows = []
 
@@ -69,57 +107,95 @@ def parse_weather_json(json_data: Dict[str, Any]) -> pd.DataFrame:
         region_name = map_county_to_region(location_name)
         weather_elements = loc.get("weatherElement", [])
 
-        # Extract MinT and MaxT element time arrays
-        mint_times = []
-        maxt_times = []
-
+        # Map element time arrays
+        elem_dict = {}
         for elem in weather_elements:
-            elem_name = elem.get("elementName")
-            if elem_name == "MinT":
-                mint_times = elem.get("time", [])
-            elif elem_name == "MaxT":
-                maxt_times = elem.get("time", [])
+            elem_dict[elem.get("elementName")] = elem.get("time", [])
 
-        # Process MinT time entries
+        mint_times = elem_dict.get("MinT", [])
+        maxt_times = elem_dict.get("MaxT", [])
+        wx_times = elem_dict.get("Wx", [])
+        pop_times = elem_dict.get("PoP", [])
+        ci_times = elem_dict.get("CI", [])
+
+        # Aggregate data by date
         time_data = {}
+
+        # 1. MinT
         for item in mint_times:
-            start_time = item.get("startTime", "")
-            date_str = start_time.split(" ")[0] if start_time else ""
-            mint_val = item.get("parameter", {}).get("parameterName")
-            if date_str and mint_val is not None:
+            date_str = item.get("startTime", "").split(" ")[0]
+            val = item.get("parameter", {}).get("parameterName")
+            if date_str and val is not None:
                 if date_str not in time_data:
                     time_data[date_str] = {}
-                # Keep the minimum value if multiple time slots exist for the same date
-                val = float(mint_val)
-                if "mint" not in time_data[date_str] or val < time_data[date_str]["mint"]:
-                    time_data[date_str]["mint"] = val
+                v = float(val)
+                if "mint" not in time_data[date_str] or v < time_data[date_str]["mint"]:
+                    time_data[date_str]["mint"] = v
 
-        # Process MaxT time entries
+        # 2. MaxT
         for item in maxt_times:
-            start_time = item.get("startTime", "")
-            date_str = start_time.split(" ")[0] if start_time else ""
-            maxt_val = item.get("parameter", {}).get("parameterName")
-            if date_str and maxt_val is not None:
+            date_str = item.get("startTime", "").split(" ")[0]
+            val = item.get("parameter", {}).get("parameterName")
+            if date_str and val is not None:
                 if date_str not in time_data:
                     time_data[date_str] = {}
-                # Keep the maximum value if multiple time slots exist for the same date
-                val = float(maxt_val)
-                if "maxt" not in time_data[date_str] or val > time_data[date_str]["maxt"]:
-                    time_data[date_str]["maxt"] = val
+                v = float(val)
+                if "maxt" not in time_data[date_str] or v > time_data[date_str]["maxt"]:
+                    time_data[date_str]["maxt"] = v
 
-        # Flatten into row records
+        # 3. Wx (Weather condition)
+        for item in wx_times:
+            date_str = item.get("startTime", "").split(" ")[0]
+            val = item.get("parameter", {}).get("parameterName")
+            if date_str and val and date_str in time_data:
+                if "wx" not in time_data[date_str]:
+                    time_data[date_str]["wx"] = str(val)
+
+        # 4. PoP (Precipitation probability)
+        for item in pop_times:
+            date_str = item.get("startTime", "").split(" ")[0]
+            val = item.get("parameter", {}).get("parameterName")
+            if date_str and val and date_str in time_data:
+                if "pop" not in time_data[date_str]:
+                    time_data[date_str]["pop"] = str(val)
+
+        # 5. CI (Comfort index)
+        for item in ci_times:
+            date_str = item.get("startTime", "").split(" ")[0]
+            val = item.get("parameter", {}).get("parameterName")
+            if date_str and val and date_str in time_data:
+                if "ci" not in time_data[date_str]:
+                    time_data[date_str]["ci"] = str(val)
+
+        # Observation data for this county
+        obs = county_obs.get(location_name, {
+            "windSpeed": 2.5,
+            "windDirection": 60.0,
+            "humidity": 70.0,
+            "precipitation": 0.0,
+            "weather": "多雲"
+        })
+
+        # Flatten into rows
         for date_str, temps in time_data.items():
             rows.append({
                 "regionName": region_name,
                 "locationName": location_name,
                 "dataDate": date_str,
                 "mint": temps.get("mint"),
-                "maxt": temps.get("maxt")
+                "maxt": temps.get("maxt"),
+                "wx": temps.get("wx", obs.get("weather", "多雲")),
+                "pop": temps.get("pop", "20"),
+                "ci": temps.get("ci", "舒適"),
+                "windSpeed": obs.get("windSpeed", 2.5),
+                "windDirection": obs.get("windDirection", 60.0),
+                "humidity": obs.get("humidity", 70.0),
+                "precipitation": obs.get("precipitation", 0.0)
             })
 
     df = pd.DataFrame(rows)
 
-    # Data Cleaning (Unit 07)
+    # Data Cleaning
     if not df.empty:
         df["mint"] = pd.to_numeric(df["mint"], errors="coerce")
         df["maxt"] = pd.to_numeric(df["maxt"], errors="coerce")

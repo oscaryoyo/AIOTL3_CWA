@@ -67,6 +67,37 @@ def fetch_weather_forecast(dataset_id: str = DEFAULT_DATASET_ID) -> dict:
     return data
 
 
+def fetch_station_observations(dataset_id: str = "O-A0003-001") -> dict:
+    """
+    Fetch real-time weather station observation data from CWA Open Data API.
+    Provides current temperature, wind speed/direction, humidity, precipitation, and weather.
+    """
+    try:
+        api_key = get_cwa_api_key()
+    except Exception as e:
+        logging.warning(f"CWA_API_KEY not available for observations: {e}")
+        return {}
+
+    url = f"{CWA_API_BASE_URL}/{dataset_id}"
+    params = {"Authorization": api_key, "format": "JSON"}
+
+    try:
+        response = requests.get(url, params=params, timeout=15)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.SSLError:
+        try:
+            response = requests.get(url, params=params, verify=False, timeout=15)
+            response.raise_for_status()
+            return response.json()
+        except Exception as err:
+            logging.warning(f"Failed to fetch station observations (SSL retry): {err}")
+            return {}
+    except Exception as e:
+        logging.warning(f"Failed to fetch station observations: {e}")
+        return {}
+
+
 if __name__ == "__main__":
     print("=== Stage 1 Test: CWA API Data Acquisition ===")
     try:

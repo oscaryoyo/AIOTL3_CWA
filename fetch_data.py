@@ -7,7 +7,7 @@ Orchestrates:
 """
 
 import logging
-from cwa_service import fetch_weather_forecast
+from cwa_service import fetch_weather_forecast, fetch_station_observations
 from data_processor import parse_weather_json, get_regional_forecast_df
 from database import save_forecast_to_db, query_all_forecasts
 
@@ -19,11 +19,16 @@ def run_etl_pipeline() -> int:
     """Execute the full weather ETL pipeline."""
     logging.info("Starting Weather ETL Pipeline...")
     
-    # 1. Fetch raw API data
+    # 1. Fetch raw API data (forecast and observations)
     raw_json = fetch_weather_forecast()
+    try:
+        obs_json = fetch_station_observations()
+    except Exception as e:
+        logging.warning(f"Failed to fetch station observations: {e}")
+        obs_json = {}
     
     # 2. Parse & clean county/city-level forecast data
-    detailed_df = parse_weather_json(raw_json)
+    detailed_df = parse_weather_json(raw_json, obs_json)
     
     # 3. Save / Upsert city-level records to SQLite
     saved_count = save_forecast_to_db(detailed_df)
