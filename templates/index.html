@@ -599,6 +599,25 @@
         }
         .leaflet-popup-tip { background: rgba(15, 23, 42, 0.95) !important; }
         .leaflet-popup-content { margin: 10px 12px !important; line-height: 1.4 !important; }
+
+        /* Typhoon Track Time Labels */
+        .typhoon-time-label {
+            background: rgba(244, 63, 94, 0.88) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            color: #fff !important;
+            font-size: 0.6rem !important;
+            font-weight: 700 !important;
+            font-family: 'Outfit', sans-serif !important;
+            padding: 1px 5px !important;
+            border-radius: 4px !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5) !important;
+            white-space: nowrap !important;
+        }
+        .typhoon-time-label::before { display: none !important; }
+
+        .typhoon-forecast-label {
+            background: rgba(245, 158, 11, 0.88) !important;
+        }
     </style>
 </head>
 <body>
@@ -652,7 +671,6 @@
             <div class="panel-section-title">底圖樣式 (暗黑修復)</div>
             <div class="basemap-grid">
                 <button id="bm-esridark" class="basemap-btn active" onclick="switchBasemap('esridark')">🌑 極客深色</button>
-                <button id="bm-cartodark" class="basemap-btn" onclick="switchBasemap('cartodark')">🌌 沉浸夜空</button>
                 <button id="bm-satellite" class="basemap-btn" onclick="switchBasemap('satellite')">🛰️ 衛星影像</button>
                 <button id="bm-street" class="basemap-btn" onclick="switchBasemap('street')">🗺️ 街道圖</button>
             </div>
@@ -842,7 +860,6 @@
 
         const basemapLayers = {
             'esridark': esriDarkTileLayer,
-            'cartodark': cartoDarkTileLayer,
             'satellite': satelliteTileLayer,
             'street': streetTileLayer
         };
@@ -866,6 +883,7 @@
         const markerGroup = L.layerGroup().addTo(map);
         const typhoonLayerGroup = L.layerGroup().addTo(map);
         const stationLayerGroup = L.layerGroup().addTo(map);
+        const tempFillGroup = L.layerGroup().addTo(map);  // temperature choropleth fill
         const markersByCity = {};
 
         // Find Latest Record per City
@@ -875,6 +893,66 @@
                 latestByCity[r.locationName] = r;
             }
         });
+
+        // ── Taiwan City Approximate Polygons (simplified bounding circles for choropleth) ──
+        // Each entry: [centerLat, centerLng, approxRadiusKm]
+        const cityApproxRadius = {
+            "基隆市": 8,
+            "臺北市": 13,
+            "新北市": 22,
+            "桃園市": 20,
+            "新竹市": 8,
+            "新竹縣": 18,
+            "宜蘭縣": 22,
+            "苗栗縣": 22,
+            "臺中市": 30,
+            "彰化縣": 16,
+            "南投縣": 35,
+            "雲林縣": 18,
+            "嘉義市": 8,
+            "嘉義縣": 22,
+            "臺南市": 28,
+            "高雄市": 32,
+            "屏東縣": 30,
+            "花蓮縣": 38,
+            "臺東縣": 35,
+            "澎湖縣": 12,
+            "金門縣": 10,
+            "連江縣": 8
+        };
+
+        function getTempColor(temp) {
+            if (temp >= 36) return '#dc2626';
+            if (temp >= 33) return '#ef4444';
+            if (temp >= 30) return '#f97316';
+            if (temp >= 27) return '#eab308';
+            if (temp >= 24) return '#22c55e';
+            if (temp >= 21) return '#06b6d4';
+            if (temp >= 18) return '#3b82f6';
+            return '#2c7bb6';
+        }
+
+        function renderTempFill() {
+            tempFillGroup.clearLayers();
+            if (currentMode !== 'temp') return;
+            Object.keys(cityCoords).forEach(cityName => {
+                const coords = cityCoords[cityName];
+                const data = latestByCity[cityName] || {};
+                const avgTemp = (data.mint !== undefined && data.maxt !== undefined)
+                    ? (Number(data.mint) + Number(data.maxt)) / 2
+                    : 25;
+                const color = getTempColor(avgTemp);
+                const radius = (cityApproxRadius[cityName] || 20) * 1000;
+                L.circle(coords, {
+                    radius: radius,
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.22,
+                    weight: 1.2,
+                    opacity: 0.45
+                }).addTo(tempFillGroup);
+            });
+        }
 
         // ── 3. Typhoon Track Rendering ──────────────────────────
         function renderTyphoonTracks() {
@@ -894,9 +972,12 @@
                         opacity: 0.85
                     }).addTo(typhoonLayerGroup);
 
-                    // Past points dots
+                    // Past points dots with time labels
                     pastPts.forEach((p, idx) => {
-                        if (idx % 3 === 0 || idx === pastPts.length - 1) {
+                        const pTime = p.time ? p.time.replace('T', ' ').substring(5, 16) : '';
+                        const showLabel = (idx % 2 === 0 || idx === pastPts.length - 1);
+
+                        if (showLabel) {
                             const ptMarker = L.circleMarker([p.lat, p.lng], {
                                 radius: 4,
                                 color: '#ffffff',
@@ -905,7 +986,16 @@
                                 weight: 1.5
                             }).addTo(typhoonLayerGroup);
 
-                            const pTime = p.time ? p.time.replace('T', ' ').substring(5, 16) : '';
+                            // Time label tooltip always visible
+                            if (pTime) {
+                                ptMarker.bindTooltip(pTime, {
+                                    permanent: true,
+                                    direction: 'top',
+                                    offset: [0, -6],
+                                    className: 'typhoon-time-label'
+                                });
+                            }
+
                             ptMarker.bindPopup(`
                                 <div style="font-size:0.8rem; text-align:center;">
                                     <b style="color:#f43f5e;">🌀 ${ty.name} (歷史位置)</b><br>
@@ -974,9 +1064,21 @@
                             weight: 1.5
                         }).addTo(typhoonLayerGroup);
 
+                        // Time label on forecast nodes
+                        const fcTime = p.time ? p.time.replace('T', ' ').substring(5, 16) : (p.hour ? `+${p.hour}h` : '');
+                        if (fcTime) {
+                            fcMarker.bindTooltip(fcTime, {
+                                permanent: true,
+                                direction: 'top',
+                                offset: [0, -6],
+                                className: 'typhoon-time-label typhoon-forecast-label'
+                            });
+                        }
+
                         fcMarker.bindPopup(`
                             <div style="font-size:0.8rem; text-align:center;">
                                 <b style="color:#f59e0b;">🔮 ${ty.name} 預測位置 (+${p.hour}小時)</b><br>
+                                時間: ${fcTime}<br>
                                 預測風速: ${p.wind} m/s<br>
                                 70% 暴風機率半徑: ${p.radius} km
                             </div>
@@ -1044,13 +1146,9 @@
 
             switch (mode) {
                 case 'temp': {
-                    let color = '#38bdf8';
-                    if (avgTemp >= 32) color = '#ef4444';
-                    else if (avgTemp >= 28) color = '#f97316';
-                    else if (avgTemp >= 24) color = '#22c55e';
-                    else if (avgTemp >= 20) color = '#06b6d4';
+                    const color = getTempColor(avgTemp);
                     return {
-                        html: `<span class="marker-name">${shortName}</span><span class="marker-val" style="color:${color};">🌡️ ${Math.round(avgTemp)}°C</span>`,
+                        html: `<span class="marker-name" style="font-weight:800; font-size:0.78rem;">${shortName}</span><span class="marker-val" style="color:${color}; font-size:0.92rem; font-weight:900;">🌡️ ${Math.round(avgTemp)}°</span>`,
                         color: color
                     };
                 }
@@ -1180,8 +1278,9 @@
             // Update Legend
             updateLegend(mode);
 
-            // Re-render markers
+            // Re-render markers and temp fill
             renderMarkers();
+            renderTempFill();
         }
 
         function updateLegend(mode) {
@@ -1440,6 +1539,7 @@
         }
 
         // Initial Setup
+        renderTempFill();
         renderMarkers();
         renderTyphoonTracks();
         renderStationDots();
