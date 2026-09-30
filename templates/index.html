@@ -961,60 +961,120 @@
                    GEO_EN_TO_ZH[props.name] || GEO_EN_TO_ZH[props.NAME] || '';
         }
 
-        // Temperature color scale – warm sandy/orange palette matching reference image
+        // ── Smooth Color Interpolation Engine ─────────────────
+        // Linearly interpolate between two values
+        function lerp(a, b, t) { return a + (b - a) * t; }
+
+        // Interpolate across a palette of [R,G,B] stops given t in [0,1]
+        function interpolateRGB(stops, t) {
+            t = Math.max(0, Math.min(1, t));
+            const n = stops.length - 1;
+            const i = Math.min(Math.floor(t * n), n - 1);
+            const f = t * n - i;
+            const c1 = stops[i], c2 = stops[i + 1];
+            const r = Math.round(lerp(c1[0], c2[0], f));
+            const g = Math.round(lerp(c1[1], c2[1], f));
+            const b = Math.round(lerp(c1[2], c2[2], f));
+            return `rgb(${r},${g},${b})`;
+        }
+
+        // Temperature gradient stops: 15°C (cold blue) → 38°C (hot red)
+        // Every 1°C maps smoothly to a unique color
+        const TEMP_COLOR_STOPS = [
+            [44,  123, 182],  // 15° deep blue
+            [90,  164, 208],  // 17° sky blue
+            [171, 217, 233],  // 19° light blue
+            [224, 243, 248],  // 21° pale cyan
+            [168, 219, 168],  // 23° light green
+            [120, 198, 121],  // 25° green
+            [255, 255, 178],  // 27° light yellow
+            [254, 217,  83],  // 29° yellow-orange
+            [253, 174,  97],  // 31° orange
+            [240, 110,  60],  // 33° deep orange
+            [215,  48,  39],  // 35° red-orange
+            [165,   0,  38],  // 37° dark red
+            [110,   0,  20],  // 38°+ maroon
+        ];
+        const TEMP_MIN = 15, TEMP_MAX = 38;
+
         function getTempColor(temp) {
-            if (temp >= 36) return '#b91c1c';
-            if (temp >= 34) return '#dc2626';
-            if (temp >= 32) return '#ef4444';
-            if (temp >= 30) return '#f97316';
-            if (temp >= 28) return '#f59e0b';
-            if (temp >= 26) return '#d4a017'; // warm golden-tan
-            if (temp >= 24) return '#84cc16';
-            if (temp >= 22) return '#22c55e';
-            if (temp >= 20) return '#06b6d4';
-            if (temp >= 18) return '#3b82f6';
-            return '#2c7bb6';
+            const t = (temp - TEMP_MIN) / (TEMP_MAX - TEMP_MIN);
+            return interpolateRGB(TEMP_COLOR_STOPS, t);
         }
 
-        // Choropleth fill color — slightly desaturated/sandy to match reference image style
-        function getChoroplethFill(temp) {
-            // Using a warm sandy palette interpolation
-            if (temp >= 36) return ['#7f1d1d', 0.72];
-            if (temp >= 34) return ['#991b1b', 0.72];
-            if (temp >= 32) return ['#c2410c', 0.65];
-            if (temp >= 30) return ['#d97706', 0.60];
-            if (temp >= 28) return ['#b45309', 0.55]; // sandy orange – matches image
-            if (temp >= 26) return ['#a16207', 0.48]; // golden tan
-            if (temp >= 24) return ['#65a30d', 0.50];
-            if (temp >= 22) return ['#15803d', 0.50];
-            if (temp >= 20) return ['#0e7490', 0.50];
-            if (temp >= 18) return ['#1d4ed8', 0.50];
-            return ['#1e3a8a', 0.55];
+        function getTempFillStyle(temp) {
+            const t = (temp - TEMP_MIN) / (TEMP_MAX - TEMP_MIN);
+            const color = interpolateRGB(TEMP_COLOR_STOPS, t);
+            // Higher temps = more opaque fill
+            const opacity = 0.38 + Math.min(0.28, Math.max(0, t) * 0.28);
+            return { color, opacity };
         }
 
-        async function renderTempFill() {
+        // Precipitation gradient stops: 0% (dry white-green) → 100% (saturated blue-purple)
+        const RAIN_COLOR_STOPS = [
+            [240, 249, 255],  // 0%   near-white (dry)
+            [186, 228, 248],  // 10%  very light blue
+            [106, 192, 236],  // 20%  light blue
+            [ 54, 162, 220],  // 30%  medium sky blue
+            [ 15, 134, 200],  // 40%  blue
+            [  7, 107, 181],  // 50%  deeper blue
+            [ 11,  78, 161],  // 60%  dark blue
+            [ 29,  55, 148],  // 70%  navy
+            [ 63,  35, 155],  // 80%  indigo
+            [107,  29, 185],  // 90%  violet
+            [139,   2, 139],  // 100% purple
+        ];
+
+        function getRainColor(pop) {
+            const t = Math.max(0, Math.min(100, pop)) / 100;
+            return interpolateRGB(RAIN_COLOR_STOPS, t);
+        }
+
+        function getRainFillStyle(pop) {
+            const t = Math.max(0, Math.min(100, pop)) / 100;
+            const color = interpolateRGB(RAIN_COLOR_STOPS, t);
+            // More rain = more visible
+            const opacity = 0.18 + t * 0.52;
+            return { color, opacity };
+        }
+
+        // ── Combined Choropleth Renderer (handles both temp and rain) ───
+        async function renderChoropleth() {
             choroplethGroup.clearLayers();
-            if (currentMode !== 'temp') return;
+            if (currentMode !== 'temp' && currentMode !== 'rain') return;
 
             const geojson = await loadTaiwanGeoJSON();
+
+            function getStyle(feature) {
+                const countyName = resolveCountyName(feature.properties);
+                const data = latestByCity[countyName] || {};
+                let fillColor, fillOpacity;
+
+                if (currentMode === 'temp') {
+                    const avgTemp = (data.mint !== undefined && data.maxt !== undefined)
+                        ? (Number(data.mint) + Number(data.maxt)) / 2 : 26;
+                    const s = getTempFillStyle(avgTemp);
+                    fillColor = s.color;
+                    fillOpacity = s.opacity;
+                } else { // rain
+                    const pop = parseInt(data.pop || '20', 10);
+                    const s = getRainFillStyle(pop);
+                    fillColor = s.color;
+                    fillOpacity = s.opacity;
+                }
+
+                return {
+                    fillColor: fillColor,
+                    fillOpacity: fillOpacity,
+                    color: 'rgba(130, 150, 190, 0.5)',
+                    weight: 1.4,
+                    opacity: 0.8
+                };
+            }
+
             if (geojson) {
-                // GeoJSON choropleth with actual county polygons
                 L.geoJSON(geojson, {
-                    style: function(feature) {
-                        const countyName = resolveCountyName(feature.properties);
-                        const data = latestByCity[countyName] || {};
-                        const avgTemp = (data.mint !== undefined && data.maxt !== undefined)
-                            ? (Number(data.mint) + Number(data.maxt)) / 2
-                            : 26;
-                        const [fillColor, fillOpacity] = getChoroplethFill(avgTemp);
-                        return {
-                            fillColor: fillColor,
-                            fillOpacity: fillOpacity,
-                            color: 'rgba(120, 140, 180, 0.55)',
-                            weight: 1.5,
-                            opacity: 0.85
-                        };
-                    },
+                    style: getStyle,
                     onEachFeature: function(feature, layer) {
                         layer.on('click', function() {
                             const countyName = resolveCountyName(feature.properties);
@@ -1026,23 +1086,32 @@
                     }
                 }).addTo(choroplethGroup);
             } else {
-                // Fallback: draw filled circles per city
+                // Fallback: circles per city
                 Object.keys(cityCoords).forEach(cityName => {
                     const coords = cityCoords[cityName];
                     const data = latestByCity[cityName] || {};
-                    const avgTemp = (data.mint !== undefined && data.maxt !== undefined)
-                        ? (Number(data.mint) + Number(data.maxt)) / 2 : 26;
-                    const [fillColor, fillOpacity] = getChoroplethFill(avgTemp);
+                    let fillColor, fillOpacity;
+                    if (currentMode === 'temp') {
+                        const avgTemp = (data.mint !== undefined && data.maxt !== undefined)
+                            ? (Number(data.mint) + Number(data.maxt)) / 2 : 26;
+                        const s = getTempFillStyle(avgTemp);
+                        fillColor = s.color; fillOpacity = s.opacity;
+                    } else {
+                        const pop = parseInt(data.pop || '20', 10);
+                        const s = getRainFillStyle(pop);
+                        fillColor = s.color; fillOpacity = s.opacity;
+                    }
                     L.circle(coords, {
                         radius: 28000,
-                        color: 'rgba(120,140,180,0.5)',
-                        fillColor: fillColor,
-                        fillOpacity: fillOpacity,
-                        weight: 1.2
+                        color: 'rgba(130,150,190,0.5)',
+                        fillColor, fillOpacity, weight: 1.2
                     }).addTo(choroplethGroup);
                 });
             }
         }
+
+        // Keep alias for backward-compat calls
+        const renderTempFill = renderChoropleth;
 
         // ── 3. Typhoon Track Rendering ──────────────────────────
         function renderTyphoonTracks() {
@@ -1251,13 +1320,15 @@
                 }
                 case 'rain': {
                     const pop = parseInt(data.pop || '10', 10);
-                    let color = '#38bdf8';
-                    if (pop >= 70) color = '#818cf8';
-                    else if (pop >= 40) color = '#06b6d4';
-                    else color = '#22c55e';
+                    const color = getRainColor(pop);
+                    // Pill class based on intensity
+                    let pillClass = 'rain-low';
+                    if (pop >= 70) pillClass = 'rain-heavy';
+                    else if (pop >= 40) pillClass = 'rain-med';
                     return {
-                        html: `<span class="marker-name">${shortName}</span><span class="marker-val" style="color:${color};">🌧️ ${pop}%</span>`,
-                        color: color
+                        html: `<div class="temp-pill" style="background: linear-gradient(145deg, ${getRainColor(Math.max(0,pop-15))}, ${color}); border-color: rgba(255,255,255,0.6);">${pop}%</div>`,
+                        color: color,
+                        isPill: true
                     };
                 }
                 case 'wind': {
@@ -1375,9 +1446,9 @@
             // Update Legend
             updateLegend(mode);
 
-            // Re-render markers and temp fill
+            // Re-render markers and choropleth (temp & rain get area fill)
             renderMarkers();
-            renderTempFill(); // async – fine as fire-and-forget
+            renderChoropleth(); // async – fire and forget
         }
 
         function updateLegend(mode) {
@@ -1390,13 +1461,13 @@
                 case 'temp':
                     title.innerText = '氣溫色階';
                     unit.innerText = '°C';
-                    gradient.style.background = 'linear-gradient(to right, #2c7bb6, #abd9e9, #22c55e, #fdae61, #ef4444)';
-                    labels.innerHTML = '<span>15°</span><span>20°</span><span>24°</span><span>28°</span><span>32°</span><span>36°+</span>';
+                    gradient.style.background = 'linear-gradient(to right, rgb(44,123,182), rgb(171,217,233), rgb(168,219,168), rgb(255,255,178), rgb(253,174,97), rgb(215,48,39), rgb(110,0,20))';
+                    labels.innerHTML = '<span>15°</span><span>19°</span><span>23°</span><span>27°</span><span>31°</span><span>35°</span><span>38°+</span>';
                     break;
                 case 'rain':
-                    title.innerText = '降雨機率';
+                    title.innerText = '降雨機率色階';
                     unit.innerText = '%';
-                    gradient.style.background = 'linear-gradient(to right, #e0f2fe, #7dd3fc, #38bdf8, #0284c7, #4338ca)';
+                    gradient.style.background = 'linear-gradient(to right, rgb(240,249,255), rgb(106,192,236), rgb(15,134,200), rgb(11,78,161), rgb(63,35,155), rgb(139,2,139))';
                     labels.innerHTML = '<span>0%</span><span>20%</span><span>40%</span><span>60%</span><span>80%</span><span>100%</span>';
                     break;
                 case 'wind':
